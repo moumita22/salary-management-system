@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "ACME Salary Management API",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
