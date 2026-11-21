@@ -51,25 +51,27 @@ The 10,000 employees are distributed across 12 realistic organizational departme
 * **Server-Side Pagination:** Chunked queries, preventing browser memory lag across 10,000 rows.
 
 #### C. Relational Data Model & Financial Integrity (PostgreSQL)
-* **Employee Profile:** ID, Full Name, Email, Department, Designation, Country, Employment Type (`FULL_TIME`, `PART_TIME`, `INTERN`), Status (`ACTIVE`, `INACTIVE`), Date of Joining.
-* **7 Strongly-Typed Financial Columns :**
-  * `Base Salary`, `Allowance`, `Bonus`, `Gross Salary`, `Deductions`, `Net Salary`, `CTC`.
-* **Audit Snapshot (`calculation_snapshot JSONB`):**
-  * Preserves the exact percentage rules and custom additions used at the time of salary generation for historical auditability.
-* **Currency Normalization:**
-  * Stores local currency amounts + normalized `CTC_USD` for global reporting.
+* **Normalized 5-Table Schema:**
+  * `departments`: Unique `id`, `department_id` (e.g. `DEP-01`), and `name`.
+  * `roles`: Job titles and seniority levels (`JUNIOR`, `MID_LEVEL`, `SENIOR`) belonging to departments.
+  * `salary_component_rules`: Percentage policy rules per role and country, strictly enforced to sum to 100%.
+  * `employee_details`: Master record storing `employee_id`, demographic details, `role_id`, `country_code`, `annual_ctc` (USD), and `last_working_day`.
+  * `employee_salary_details`: Monthly financial payouts in USD (`base_salary`, `allowance`, `bonus`, `employer_retirals`, `gross_salary`, `tax_deduction`, `net_salary`, and `calculation_snapshot JSONB`).
+* **Financial Integrity:**
+  * Strict `NUMERIC(14, 2)` precision for all currency figures.
+  * Composite Unique Constraints preventing duplicate roles, duplicate rules, and duplicate monthly employee disbursements.
+  * All monetary figures unified in **USD ($)** for seamless aggregation across global departments.
 
-#### D. Dynamic Compensation Breakdown by Employment Type
-* **`FULL_TIME`:** Auto-calculates standard percentage breakdown from CTC:
-  * Base: 50%
-  * Allowances: 30%
-  * Bonus: 10%
-  * Employer Retirals/Benefits: 10%
-  * Estimated Tax/Deduction: Bracket-based (10%)
-  * UI allows HR to override any component or add one-off bonuses.
-* **`INTERN` / `PART_TIME`:** Simplified model:
-  * Interns receive a flat monthly/annual stipend (Base/Gross = Stipend, zero bonus/retirals).
-  * Part-time staff receive a fixed base without complex benefit deductions.
+#### D. Dynamic Compensation Breakdown by Role & Seniority Tier
+* **Tiered Policy Rules (`salary_component_rules`):**
+  * Compensation structures vary by role and seniority level (e.g., Junior engineers receive higher Base % with lower bonus, Senior roles receive higher Bonus % margins).
+  * Auto-calculates monthly breakdown from employee's `annual_ctc`:
+    * Monthly Base Salary
+    * Monthly Allowances
+    * Performance Bonus
+    * Employer Retirals/Benefits
+    * Estimated Tax Deductions
+  * Live UI allows HR to override any component or add one-off spot bonuses before locking.
 
 #### E. Mid-Month Exit & Last Working Day (LWD) Settlement Proration
 * **Mid-Month Resignation/Exit Proration:**
