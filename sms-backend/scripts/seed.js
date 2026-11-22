@@ -23,7 +23,7 @@ const DEPARTMENTS = [
 // 2. Roles: 3 tiers per department
 const ROLES_BY_DEPT = {
   'DEP-01': [
-    { title: 'Junior Software Engineer', level: 'JUNIOR' },
+    { title: 'Associate Software Engineer', level: 'JUNIOR' },
     { title: 'Software Engineer', level: 'MID_LEVEL' },
     { title: 'Senior Staff Engineer', level: 'SENIOR' },
   ],
