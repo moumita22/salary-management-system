@@ -1,32 +1,40 @@
 import React from 'react';
-import { DollarSign, Calendar, Lock, Play, UserMinus, Users } from 'lucide-react';
+import { DollarSign, Lock, Play, UserMinus, Users } from 'lucide-react';
+import MonthYearPicker from './MonthYearPicker.js';
 import type { SalaryStatus } from '../types/index.js';
 
 export interface HeaderProps {
   activeView: 'directory' | 'exits';
   setActiveView: (view: 'directory' | 'exits') => void;
   payoutPeriod?: { month: number; year: number };
+  onPeriodChange?: (val: { month: number; year: number }) => void;
   onGeneratePayroll: () => void;
   onDisbursePayroll: () => void;
   isGenerating: boolean;
   isDisbursing: boolean;
   payrollStatus: SalaryStatus | string;
   exitsCount?: number;
+  filteredCount?: number;
+  isFiltered?: boolean;
 }
 
 export default function Header({
   activeView,
   setActiveView,
+  payoutPeriod,
+  onPeriodChange,
   onGeneratePayroll,
   onDisbursePayroll,
   isGenerating,
   isDisbursing,
   payrollStatus,
   exitsCount = 0,
+  filteredCount = 0,
+  isFiltered = false,
 }: HeaderProps): React.JSX.Element {
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Brand */}
           <div className="flex items-center space-x-3">
@@ -46,16 +54,25 @@ export default function Header({
 
           {/* Active Period & View Switcher */}
           <div className="flex items-center space-x-3">
-            {/* Cycle Badge */}
-            <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 text-sm font-medium">
-              <Calendar className="w-4 h-4 text-slate-500" />
-              <span>Nov 2026 Cycle</span>
+            {/* Cycle Selector (Month/Year Calendar Picker) */}
+            <div className="hidden md:flex items-center space-x-2">
+              {onPeriodChange && payoutPeriod && (
+                <MonthYearPicker
+                  value={payoutPeriod}
+                  onChange={onPeriodChange}
+                  variant="header"
+                />
+              )}
               {payrollStatus === 'PAID' ? (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                   <Lock className="w-3 h-3 mr-1" /> Paid & Locked
                 </span>
+              ) : payrollStatus === 'EMPTY' ? (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                  Uncalculated
+                </span>
               ) : (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
                   Draft Mode
                 </span>
               )}
@@ -108,7 +125,13 @@ export default function Header({
               }`}
             >
               <Play className="w-4 h-4 fill-current" />
-              <span>{isGenerating ? 'Generating...' : '⚡ Generate Payroll'}</span>
+              <span>
+                {isGenerating
+                  ? 'Generating...'
+                  : isFiltered && filteredCount > 0
+                  ? `⚡ Generate Payroll (${filteredCount.toLocaleString()})`
+                  : '⚡ Generate Monthly Payroll'}
+              </span>
             </button>
 
             <button

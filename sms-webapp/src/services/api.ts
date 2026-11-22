@@ -88,14 +88,25 @@ export async function getExitingEmployees({
   return Array.isArray(res) ? res : res.data || [];
 }
 
-// 4. Generate Monthly Payroll for all 10,000 employees for a given cycle
+// 4. Generate Monthly Payroll (can be for all or scoped to filtered employees)
 export async function generateMonthlyPayroll({
   month = 11,
   year = 2026,
-}: { month?: number; year?: number } = {}): Promise<{ success: boolean; count: number; message: string }> {
+  departmentId,
+  countryCode,
+  level,
+  search,
+}: {
+  month?: number;
+  year?: number;
+  departmentId?: string;
+  countryCode?: string;
+  level?: string;
+  search?: string;
+} = {}): Promise<{ success: boolean; count: number; message: string }> {
   return request('/salaries/generate', {
     method: 'POST',
-    body: JSON.stringify({ month, year }),
+    body: JSON.stringify({ month, year, departmentId, countryCode, level, search }),
   });
 }
 
@@ -131,4 +142,19 @@ export async function disbursePayroll({
     method: 'POST',
     body: JSON.stringify({ month, year }),
   });
+}
+
+// 8. Fetch salary cycle metrics & status (DRAFT / PAID / EMPTY)
+export async function getSalaryMetrics({
+  month = 11,
+  year = 2026,
+}: { month?: number; year?: number } = {}): Promise<{
+  total_records: number;
+  draft_count: number;
+  paid_count: number;
+  total_gross: number;
+  total_net: number;
+  status: 'DRAFT' | 'PAID' | 'MIXED' | 'EMPTY';
+}> {
+  return request(`/salaries/metrics?month=${month}&year=${year}`);
 }

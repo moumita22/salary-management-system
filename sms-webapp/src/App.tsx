@@ -15,6 +15,7 @@ import {
   disbursePayroll,
   updateEmployeeSalary,
   generateSettlement,
+  getSalaryMetrics,
 } from './services/api.js';
 import type {
   Department,
@@ -48,10 +49,21 @@ export default function App(): React.JSX.Element {
   const [generatingSettlementId, setGeneratingSettlementId] = useState<number | null>(null);
 
   // Payroll Lifecycle State
-  const [payoutPeriod] = useState({ month: 11, year: 2026 });
+  const [payoutPeriod, setPayoutPeriod] = useState<{ month: number; year: number }>({ month: 11, year: 2026 });
   const [payrollStatus, setPayrollStatus] = useState<SalaryStatus | string>('DRAFT');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isDisbursing, setIsDisbursing] = useState<boolean>(false);
+
+  // Sync Cycle Status whenever payoutPeriod changes
+  useEffect(() => {
+    getSalaryMetrics({ month: payoutPeriod.month, year: payoutPeriod.year })
+      .then((res) => {
+        if (res && res.status) {
+          setPayrollStatus(res.status);
+        }
+      })
+      .catch((err) => console.error('Failed to fetch salary metrics for period:', err));
+  }, [payoutPeriod]);
 
   // Modals State
   const [payslipEmployee, setPayslipEmployee] = useState<Employee | null>(null);
@@ -144,11 +156,18 @@ export default function App(): React.JSX.Element {
     }
   }, [loadExits, activeView]);
 
-  // 5. Actions: Generate Monthly Payroll for All 10k Employees
+  const isFiltered = Boolean(selectedDeptId || countryCode || level || debouncedSearch);
+
+  // 5. Actions: Generate Monthly Payroll (for all or scoped to filtered employees)
   const handleGeneratePayroll = async () => {
+    const periodLabel = `${payoutPeriod.month}/${payoutPeriod.year}`;
+    const targetLabel = isFiltered
+      ? `the ${totalItems.toLocaleString()} filtered employees`
+      : 'all eligible employees';
+
     if (
       !window.confirm(
-        'Generate November 2026 payroll for all 10,000 employees using database policy rules?'
+        `Generate ${periodLabel} payroll for ${targetLabel} using database policy rules?`
       )
     ) {
       return;
@@ -159,8 +178,12 @@ export default function App(): React.JSX.Element {
       const res: any = await generateMonthlyPayroll({
         month: payoutPeriod.month,
         year: payoutPeriod.year,
+        departmentId: selectedDeptId || undefined,
+        countryCode: countryCode || undefined,
+        level: level || undefined,
+        search: debouncedSearch || undefined,
       });
-      showToast(`🎉 Generated payroll for ${res.generatedCount?.toLocaleString() || res.count?.toLocaleString() || '10,000'} employees!`);
+      showToast(`🎉 Generated payroll for ${res.generatedCount?.toLocaleString() || res.count?.toLocaleString() || totalItems} employees!`);
       loadEmployees();
       if (activeView === 'exits') loadExits();
     } catch (err: any) {
@@ -172,9 +195,10 @@ export default function App(): React.JSX.Element {
 
   // 6. Actions: Disburse and Lock Payday
   const handleDisbursePayroll = async () => {
+    const periodLabel = `${payoutPeriod.month}/${payoutPeriod.year}`;
     if (
       !window.confirm(
-        'Simulate month-end payday? All November 2026 salaries will be marked PAID and locked against further edits.'
+        `Simulate month-end payday? All ${periodLabel} salaries will be marked PAID and locked against further edits.`
       )
     ) {
       return;
@@ -263,12 +287,15 @@ export default function App(): React.JSX.Element {
         activeView={activeView}
         setActiveView={setActiveView}
         payoutPeriod={payoutPeriod}
+        onPeriodChange={setPayoutPeriod}
         onGeneratePayroll={handleGeneratePayroll}
         onDisbursePayroll={handleDisbursePayroll}
         isGenerating={isGenerating}
         isDisbursing={isDisbursing}
         payrollStatus={payrollStatus}
         exitsCount={exits.length}
+        filteredCount={totalItems}
+        isFiltered={isFiltered}
       />
 
       {/* Main Content Area */}
@@ -283,7 +310,6 @@ export default function App(): React.JSX.Element {
                 setSelectedDeptId(id);
                 setCurrentPage(1);
               }}
-              totalEmployees={10000}
             />
 
             {/* Filter Toolbar */}
@@ -300,12 +326,14 @@ export default function App(): React.JSX.Element {
                 setLevel(lvl);
                 setCurrentPage(1);
               }}
+              payoutPeriod={payoutPeriod}
+              onPeriodChange={setPayoutPeriod}
               onResetFilters={handleResetFilters}
               totalResults={totalItems}
             />
 
             {/* Employee Table & Pagination */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-5">
+            <div className="w-full px-4 sm:px-6 lg:px-8 mt-5">
               <EmployeeTable
                 employees={employees}
                 loading={loading}
@@ -329,7 +357,7 @@ export default function App(): React.JSX.Element {
             </div>
           </>
         ) : (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+          <div className="w-full px-4 sm:px-6 lg:px-8 mt-6">
             <SettlementView
               exits={exits}
               loading={loadingExits}
@@ -344,6 +372,7 @@ export default function App(): React.JSX.Element {
       {payslipEmployee && (
         <PayslipModal
           employee={payslipEmployee}
+          payoutPeriod={payoutPeriod}
           onClose={() => setPayslipEmployee(null)}
         />
       )}

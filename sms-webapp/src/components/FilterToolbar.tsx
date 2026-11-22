@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, Globe, Award, X } from 'lucide-react';
+import MonthYearPicker, { MonthYearValue } from './MonthYearPicker.js';
 
 const COUNTRIES = [
   { code: 'IN', name: '🇮🇳 India' },
@@ -22,6 +23,8 @@ export interface FilterToolbarProps {
   onCountryChange: (val: string) => void;
   level: string;
   onLevelChange: (val: string) => void;
+  payoutPeriod?: MonthYearValue;
+  onPeriodChange?: (val: MonthYearValue) => void;
   onResetFilters: () => void;
   totalResults?: number;
 }
@@ -33,6 +36,8 @@ export default function FilterToolbar({
   onCountryChange,
   level,
   onLevelChange,
+  payoutPeriod,
+  onPeriodChange,
   onResetFilters,
   totalResults = 0,
 }: FilterToolbarProps): React.JSX.Element {
@@ -40,7 +45,7 @@ export default function FilterToolbar({
 
   return (
     <div className="bg-white border-b border-slate-200 py-3.5 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+      <div className="w-full flex flex-col md:flex-row items-center justify-between gap-3">
         {/* Search Input */}
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -49,7 +54,7 @@ export default function FilterToolbar({
             placeholder="Search by name, email, or EMP ID..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-10 pr-9 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+            className="w-full pl-10 pr-9 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
           />
           {searchQuery && (
             <button
@@ -64,13 +69,22 @@ export default function FilterToolbar({
 
         {/* Filter Dropdowns */}
         <div className="flex items-center flex-wrap gap-2 w-full md:w-auto">
+          {/* Month & Year Selection Calendar */}
+          {payoutPeriod && onPeriodChange && (
+            <MonthYearPicker
+              value={payoutPeriod}
+              onChange={onPeriodChange}
+              variant="toolbar"
+            />
+          )}
+
           {/* Country Filter (India First) */}
           <div className="relative flex items-center">
             <Globe className="absolute left-3 w-4 h-4 text-slate-400 pointer-events-none" />
             <select
               value={countryCode}
               onChange={(e) => onCountryChange(e.target.value)}
-              className="pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 cursor-pointer transition-all appearance-none"
+              className="pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer transition-all appearance-none"
             >
               <option value="">🌍 All Countries</option>
               {COUNTRIES.map((c) => (
@@ -87,7 +101,7 @@ export default function FilterToolbar({
             <select
               value={level}
               onChange={(e) => onLevelChange(e.target.value)}
-              className="pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 cursor-pointer transition-all appearance-none"
+              className="pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer transition-all appearance-none"
             >
               <option value="">🎖️ All Seniorities</option>
               {LEVELS.map((l) => (

@@ -4,10 +4,16 @@ import type { Employee } from '../types/index.js';
 
 export interface PayslipModalProps {
   employee: Employee | null;
+  payoutPeriod?: { month: number; year: number };
   onClose: () => void;
 }
 
-export default function PayslipModal({ employee, onClose }: PayslipModalProps): React.JSX.Element | null {
+const MONTHS_LONG = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+export default function PayslipModal({ employee, payoutPeriod, onClose }: PayslipModalProps): React.JSX.Element | null {
   if (!employee) return null;
 
   const snapshot: any = employee.calculation_snapshot || {};
@@ -18,6 +24,10 @@ export default function PayslipModal({ employee, onClose }: PayslipModalProps): 
     const num = Number(val) || 0;
     return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
+
+  const payPeriodText = payoutPeriod
+    ? `${MONTHS_LONG[payoutPeriod.month - 1]} ${payoutPeriod.year}`
+    : 'November 2026';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto">
@@ -60,7 +70,7 @@ export default function PayslipModal({ employee, onClose }: PayslipModalProps): 
             <div>
               <span className="text-slate-500">Pay Period: </span>
               <span className="font-bold text-slate-800">
-                November 2026
+                {payPeriodText}
               </span>
             </div>
             <div>
