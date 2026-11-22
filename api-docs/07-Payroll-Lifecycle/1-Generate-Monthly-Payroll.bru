@@ -1,0 +1,18 @@
+meta {
+  name: 1. Generate Monthly Payroll (10,000 Employees Batch)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/salaries/generate
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "month": 11,
+    "year": 2026
+  }
+}

@@ -1,0 +1,299 @@
+meta {
+  name: Get All Roles
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/roles
+  body: none
+  auth: none
+}
+
+example {
+  name: example
+  
+  request: {
+    url: {{baseUrl}}/roles
+    method: GET
+    mode: none
+  }
+  
+  response: {
+    headers: {
+      x-powered-by: Express
+      access-control-allow-origin: *
+      content-type: application/json; charset=utf-8
+      content-length: 3988
+      etag: W/"f94-ZGw65CNDBLfY63OchYNSuAoF9ZU"
+      date: Sun, 22 Nov 2026 16:34:14 GMT
+      connection: keep-alive
+      keep-alive: timeout=5
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        [
+          {
+            "id": 1,
+            "department_id": 1,
+            "title": "Associate Software Engineer",
+            "level": "JUNIOR",
+            "department_name": "Engineering"
+          },
+          {
+            "id": 2,
+            "department_id": 1,
+            "title": "Software Engineer",
+            "level": "MID_LEVEL",
+            "department_name": "Engineering"
+          },
+          {
+            "id": 3,
+            "department_id": 1,
+            "title": "Senior Staff Engineer",
+            "level": "SENIOR",
+            "department_name": "Engineering"
+          },
+          {
+            "id": 4,
+            "department_id": 2,
+            "title": "Junior Sales Associate",
+            "level": "JUNIOR",
+            "department_name": "Sales"
+          },
+          {
+            "id": 5,
+            "department_id": 2,
+            "title": "Account Executive",
+            "level": "MID_LEVEL",
+            "department_name": "Sales"
+          },
+          {
+            "id": 6,
+            "department_id": 2,
+            "title": "Sales Director",
+            "level": "SENIOR",
+            "department_name": "Sales"
+          },
+          {
+            "id": 7,
+            "department_id": 3,
+            "title": "Operations Associate",
+            "level": "JUNIOR",
+            "department_name": "Operations"
+          },
+          {
+            "id": 8,
+            "department_id": 3,
+            "title": "Operations Specialist",
+            "level": "MID_LEVEL",
+            "department_name": "Operations"
+          },
+          {
+            "id": 9,
+            "department_id": 3,
+            "title": "Senior Operations Manager",
+            "level": "SENIOR",
+            "department_name": "Operations"
+          },
+          {
+            "id": 10,
+            "department_id": 4,
+            "title": "Support Representative",
+            "level": "JUNIOR",
+            "department_name": "Customer Support"
+          },
+          {
+            "id": 11,
+            "department_id": 4,
+            "title": "Customer Success Specialist",
+            "level": "MID_LEVEL",
+            "department_name": "Customer Support"
+          },
+          {
+            "id": 12,
+            "department_id": 4,
+            "title": "Support Lead",
+            "level": "SENIOR",
+            "department_name": "Customer Support"
+          },
+          {
+            "id": 13,
+            "department_id": 5,
+            "title": "Marketing Associate",
+            "level": "JUNIOR",
+            "department_name": "Marketing"
+          },
+          {
+            "id": 14,
+            "department_id": 5,
+            "title": "Marketing Specialist",
+            "level": "MID_LEVEL",
+            "department_name": "Marketing"
+          },
+          {
+            "id": 15,
+            "department_id": 5,
+            "title": "Growth Marketing Lead",
+            "level": "SENIOR",
+            "department_name": "Marketing"
+          },
+          {
+            "id": 16,
+            "department_id": 6,
+            "title": "Junior Financial Analyst",
+            "level": "JUNIOR",
+            "department_name": "Finance"
+          },
+          {
+            "id": 17,
+            "department_id": 6,
+            "title": "Financial Analyst",
+            "level": "MID_LEVEL",
+            "department_name": "Finance"
+          },
+          {
+            "id": 18,
+            "department_id": 6,
+            "title": "Senior Finance Manager",
+            "level": "SENIOR",
+            "department_name": "Finance"
+          },
+          {
+            "id": 19,
+            "department_id": 7,
+            "title": "Associate Product Manager",
+            "level": "JUNIOR",
+            "department_name": "Product Management"
+          },
+          {
+            "id": 20,
+            "department_id": 7,
+            "title": "Product Manager",
+            "level": "MID_LEVEL",
+            "department_name": "Product Management"
+          },
+          {
+            "id": 21,
+            "department_id": 7,
+            "title": "Principal Product Manager",
+            "level": "SENIOR",
+            "department_name": "Product Management"
+          },
+          {
+            "id": 22,
+            "department_id": 8,
+            "title": "Junior Data Analyst",
+            "level": "JUNIOR",
+            "department_name": "Data & Analytics"
+          },
+          {
+            "id": 23,
+            "department_id": 8,
+            "title": "Data Scientist",
+            "level": "MID_LEVEL",
+            "department_name": "Data & Analytics"
+          },
+          {
+            "id": 24,
+            "department_id": 8,
+            "title": "Lead Data Architect",
+            "level": "SENIOR",
+            "department_name": "Data & Analytics"
+          },
+          {
+            "id": 25,
+            "department_id": 9,
+            "title": "Research Associate",
+            "level": "JUNIOR",
+            "department_name": "Research & Development"
+          },
+          {
+            "id": 26,
+            "department_id": 9,
+            "title": "R&D Engineer",
+            "level": "MID_LEVEL",
+            "department_name": "Research & Development"
+          },
+          {
+            "id": 27,
+            "department_id": 9,
+            "title": "Principal Scientist",
+            "level": "SENIOR",
+            "department_name": "Research & Development"
+          },
+          {
+            "id": 28,
+            "department_id": 10,
+            "title": "HR Coordinator",
+            "level": "JUNIOR",
+            "department_name": "Human Resources"
+          },
+          {
+            "id": 29,
+            "department_id": 10,
+            "title": "HR Generalist",
+            "level": "MID_LEVEL",
+            "department_name": "Human Resources"
+          },
+          {
+            "id": 30,
+            "department_id": 10,
+            "title": "Senior HR Business Partner",
+            "level": "SENIOR",
+            "department_name": "Human Resources"
+          },
+          {
+            "id": 31,
+            "department_id": 11,
+            "title": "Legal Associate",
+            "level": "JUNIOR",
+            "department_name": "Legal & Compliance"
+          },
+          {
+            "id": 32,
+            "department_id": 11,
+            "title": "Compliance Specialist",
+            "level": "MID_LEVEL",
+            "department_name": "Legal & Compliance"
+          },
+          {
+            "id": 33,
+            "department_id": 11,
+            "title": "Legal Counsel",
+            "level": "SENIOR",
+            "department_name": "Legal & Compliance"
+          },
+          {
+            "id": 34,
+            "department_id": 12,
+            "title": "Administrative Assistant",
+            "level": "JUNIOR",
+            "department_name": "Administration"
+          },
+          {
+            "id": 35,
+            "department_id": 12,
+            "title": "Office Coordinator",
+            "level": "MID_LEVEL",
+            "department_name": "Administration"
+          },
+          {
+            "id": 36,
+            "department_id": 12,
+            "title": "Facilities Manager",
+            "level": "SENIOR",
+            "department_name": "Administration"
+          }
+        ]
+      '''
+    }
+  }
+}

@@ -1,0 +1,336 @@
+meta {
+  name: Search Employees (Name, ID, Email)
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/employees?search=john&limit=10
+  body: none
+  auth: none
+}
+
+params:query {
+  search: john
+  limit: 10
+}
+
+example {
+  name: example
+  
+  request: {
+    url: {{baseUrl}}/employees?search=john&limit=10
+    method: GET
+    mode: none
+    params:query: {
+      search: john
+      limit: 10
+    }
+  }
+  
+  response: {
+    headers: {
+      x-powered-by: Express
+      access-control-allow-origin: *
+      content-type: application/json; charset=utf-8
+      content-length: 5933
+      etag: W/"172d-nB7+4O2tpBVeZwThHIjfs8phRL0"
+      date: Sun, 22 Nov 2026 16:38:55 GMT
+      connection: keep-alive
+      keep-alive: timeout=5
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "data": [
+            {
+              "id": 47,
+              "employee_id": "EMP-00047",
+              "first_name": "Cyrus",
+              "last_name": "Johnson",
+              "email": "cyrus.johnson.47@acme.org",
+              "role_id": 1,
+              "country_code": "GB",
+              "annual_ctc": "69110.00",
+              "status": "ACTIVE",
+              "date_of_joining": "2023-04-27T18:30:00.000Z",
+              "last_working_day": null,
+              "role_title": "Associate Software Engineer",
+              "role_level": "JUNIOR",
+              "department_id": "DEP-01",
+              "department_name": "Engineering",
+              "salary_id": null,
+              "base_salary": null,
+              "allowance": null,
+              "bonus": null,
+              "employer_retirals": null,
+              "gross_salary": null,
+              "tax_deduction": null,
+              "net_salary": null,
+              "salary_status": null,
+              "calculation_snapshot": null
+            },
+            {
+              "id": 52,
+              "employee_id": "EMP-00052",
+              "first_name": "Johnnie",
+              "last_name": "Johnson",
+              "email": "johnnie.johnson.52@acme.org",
+              "role_id": 1,
+              "country_code": "IN",
+              "annual_ctc": "49940.00",
+              "status": "ACTIVE",
+              "date_of_joining": "2024-12-12T18:30:00.000Z",
+              "last_working_day": null,
+              "role_title": "Associate Software Engineer",
+              "role_level": "JUNIOR",
+              "department_id": "DEP-01",
+              "department_name": "Engineering",
+              "salary_id": null,
+              "base_salary": null,
+              "allowance": null,
+              "bonus": null,
+              "employer_retirals": null,
+              "gross_salary": null,
+              "tax_deduction": null,
+              "net_salary": null,
+              "salary_status": null,
+              "calculation_snapshot": null
+            },
+            {
+              "id": 327,
+              "employee_id": "EMP-00327",
+              "first_name": "Bethany",
+              "last_name": "Johns",
+              "email": "bethany.johns.327@acme.org",
+              "role_id": 2,
+              "country_code": "GB",
+              "annual_ctc": "93342.00",
+              "status": "ACTIVE",
+              "date_of_joining": "2024-09-27T18:30:00.000Z",
+              "last_working_day": null,
+              "role_title": "Software Engineer",
+              "role_level": "MID_LEVEL",
+              "department_id": "DEP-01",
+              "department_name": "Engineering",
+              "salary_id": null,
+              "base_salary": null,
+              "allowance": null,
+              "bonus": null,
+              "employer_retirals": null,
+              "gross_salary": null,
+              "tax_deduction": null,
+              "net_salary": null,
+              "salary_status": null,
+              "calculation_snapshot": null
+            },
+            {
+              "id": 379,
+              "employee_id": "EMP-00379",
+              "first_name": "Taurean",
+              "last_name": "Johnston",
+              "email": "taurean.johnston.379@acme.org",
+              "role_id": 1,
+              "country_code": "US",
+              "annual_ctc": "62199.00",
+              "status": "ACTIVE",
+              "date_of_joining": "2025-04-09T18:30:00.000Z",
+              "last_working_day": null,
+              "role_title": "Associate Software Engineer",
+              "role_level": "JUNIOR",
+              "department_id": "DEP-01",
+              "department_name": "Engineering",
+              "salary_id": null,
+              "base_salary": null,
+              "allowance": null,
+              "bonus": null,
+              "employer_retirals": null,
+              "gross_salary": null,
+              "tax_deduction": null,
+              "net_salary": null,
+              "salary_status": null,
+              "calculation_snapshot": null
+            },
+            {
+              "id": 841,
+              "employee_id": "EMP-00841",
+              "first_name": "Emmanuel",
+              "last_name": "Yundt-Johnson",
+              "email": "emmanuel.yundt-johnson.841@acme.org",
+              "role_id": 2,
+              "country_code": "IN",
+              "annual_ctc": "102786.00",
+              "status": "ACTIVE",
+              "date_of_joining": "2024-12-12T18:30:00.000Z",
+              "last_working_day": null,
+              "role_title": "Software Engineer",
+              "role_level": "MID_LEVEL",
+              "department_id": "DEP-01",
+              "department_name": "Engineering",
+              "salary_id": null,
+              "base_salary": null,
+              "allowance": null,
+              "bonus": null,
+              "employer_retirals": null,
+              "gross_salary": null,
+              "tax_deduction": null,
+              "net_salary": null,
+              "salary_status": null,
+              "calculation_snapshot": null
+            },
+            {
+              "id": 926,
+              "employee_id": "EMP-00926",
+              "first_name": "Bo",
+              "last_name": "Johnston",
+              "email": "bo.johnston.926@acme.org",
+              "role_id": 2,
+              "country_code": "DE",
+              "annual_ctc": "80076.00",
+              "status": "ACTIVE",
+              "date_of_joining": "2024-09-09T18:30:00.000Z",
+              "last_working_day": null,
+              "role_title": "Software Engineer",
+              "role_level": "MID_LEVEL",
+              "department_id": "DEP-01",
+              "department_name": "Engineering",
+              "salary_id": null,
+              "base_salary": null,
+              "allowance": null,
+              "bonus": null,
+              "employer_retirals": null,
+              "gross_salary": null,
+              "tax_deduction": null,
+              "net_salary": null,
+              "salary_status": null,
+              "calculation_snapshot": null
+            },
+            {
+              "id": 995,
+              "employee_id": "EMP-00995",
+              "first_name": "Johnathon",
+              "last_name": "Murazik-Ernser",
+              "email": "johnathon.murazik-ernser.995@acme.org",
+              "role_id": 2,
+              "country_code": "GB",
+              "annual_ctc": "76693.00",
+              "status": "ACTIVE",
+              "date_of_joining": "2023-03-09T18:30:00.000Z",
+              "last_working_day": null,
+              "role_title": "Software Engineer",
+              "role_level": "MID_LEVEL",
+              "department_id": "DEP-01",
+              "department_name": "Engineering",
+              "salary_id": null,
+              "base_salary": null,
+              "allowance": null,
+              "bonus": null,
+              "employer_retirals": null,
+              "gross_salary": null,
+              "tax_deduction": null,
+              "net_salary": null,
+              "salary_status": null,
+              "calculation_snapshot": null
+            },
+            {
+              "id": 1051,
+              "employee_id": "EMP-01051",
+              "first_name": "Ocie",
+              "last_name": "Johnson",
+              "email": "ocie.johnson.1051@acme.org",
+              "role_id": 3,
+              "country_code": "IN",
+              "annual_ctc": "207306.00",
+              "status": "ACTIVE",
+              "date_of_joining": "2024-09-05T18:30:00.000Z",
+              "last_working_day": null,
+              "role_title": "Senior Staff Engineer",
+              "role_level": "SENIOR",
+              "department_id": "DEP-01",
+              "department_name": "Engineering",
+              "salary_id": null,
+              "base_salary": null,
+              "allowance": null,
+              "bonus": null,
+              "employer_retirals": null,
+              "gross_salary": null,
+              "tax_deduction": null,
+              "net_salary": null,
+              "salary_status": null,
+              "calculation_snapshot": null
+            },
+            {
+              "id": 1137,
+              "employee_id": "EMP-01137",
+              "first_name": "Sincere",
+              "last_name": "Johnston",
+              "email": "sincere.johnston.1137@acme.org",
+              "role_id": 2,
+              "country_code": "IN",
+              "annual_ctc": "121522.00",
+              "status": "ACTIVE",
+              "date_of_joining": "2023-11-02T18:30:00.000Z",
+              "last_working_day": null,
+              "role_title": "Software Engineer",
+              "role_level": "MID_LEVEL",
+              "department_id": "DEP-01",
+              "department_name": "Engineering",
+              "salary_id": null,
+              "base_salary": null,
+              "allowance": null,
+              "bonus": null,
+              "employer_retirals": null,
+              "gross_salary": null,
+              "tax_deduction": null,
+              "net_salary": null,
+              "salary_status": null,
+              "calculation_snapshot": null
+            },
+            {
+              "id": 1149,
+              "employee_id": "EMP-01149",
+              "first_name": "Aaliyah",
+              "last_name": "Johnson",
+              "email": "aaliyah.johnson.1149@acme.org",
+              "role_id": 3,
+              "country_code": "IN",
+              "annual_ctc": "177882.00",
+              "status": "ACTIVE",
+              "date_of_joining": "2026-08-23T18:30:00.000Z",
+              "last_working_day": null,
+              "role_title": "Senior Staff Engineer",
+              "role_level": "SENIOR",
+              "department_id": "DEP-01",
+              "department_name": "Engineering",
+              "salary_id": null,
+              "base_salary": null,
+              "allowance": null,
+              "bonus": null,
+              "employer_retirals": null,
+              "gross_salary": null,
+              "tax_deduction": null,
+              "net_salary": null,
+              "salary_status": null,
+              "calculation_snapshot": null
+            }
+          ],
+          "pagination": {
+            "total": 84,
+            "page": 1,
+            "limit": 10,
+            "totalPages": 9,
+            "hasNextPage": true,
+            "hasPrevPage": false
+          }
+        }
+      '''
+    }
+  }
+}
