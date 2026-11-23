@@ -1,7 +1,98 @@
-// Core database entity types
+// ==========================================
+// Database & Connection Interfaces
+// ==========================================
+
+export type QueryParam =
+  | string
+  | number
+  | boolean
+  | Date
+  | null
+  | undefined;
+
+export type QueryRow = Record<string, unknown>;
+
+export interface FieldDef {
+  name: string;
+  tableID: number;
+  columnID: number;
+  dataTypeID: number;
+  dataTypeSize: number;
+  dataTypeModifier: number;
+  format: string;
+}
+
+export interface QueryResult<R = QueryRow> {
+  rows: R[];
+  rowCount: number | null;
+  command: string;
+  fields: FieldDef[];
+}
+
+export interface PoolClient {
+  query<R = QueryRow>(text: string, params?: QueryParam[]): Promise<QueryResult<R>>;
+  release(err?: Error | boolean): void;
+}
+
+export interface DbPool {
+  query<R = QueryRow>(text: string, params?: QueryParam[]): Promise<QueryResult<R>>;
+  connect(): Promise<PoolClient>;
+  on(event: string, listener: (...args: unknown[]) => void): this;
+  end(): Promise<void>;
+  totalCount?: number;
+  idleCount?: number;
+  waitingCount?: number;
+}
+
+export interface PoolConfig {
+  connectionString?: string;
+  host?: string;
+  port?: number;
+  database?: string;
+  user?: string;
+  password?: string;
+  max?: number;
+  idleTimeoutMillis?: number;
+  connectionTimeoutMillis?: number;
+}
+
+// ==========================================
+// Model Pagination Interfaces
+// ==========================================
+
+export interface PaginationOptions<T = QueryRow> {
+  page?: number;
+  limit?: number;
+  filter?: Partial<T>;
+  sort?: {
+    field?: keyof T | string;
+    order?: 'ASC' | 'DESC' | 'asc' | 'desc';
+  };
+  search?: {
+    query: string;
+    columns: Array<keyof T | string>;
+  };
+}
+
+export interface PaginationResult<T> {
+  data: T[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+}
+
+// ==========================================
+// Core Database Entity Types
+// ==========================================
 
 export type SeniorityLevel = 'JUNIOR' | 'MID_LEVEL' | 'SENIOR';
 export type SalaryStatus = 'DRAFT' | 'PAID';
+export type CycleStatus = 'DRAFT' | 'PAID' | 'PARTIAL' | 'MIXED' | 'EMPTY';
 
 export interface Department {
   id: number;
@@ -19,6 +110,7 @@ export interface Role {
   title: string;
   level: SeniorityLevel;
   department_name?: string;
+  department_code?: string;
 }
 
 export interface SalaryComponentRule {
@@ -55,6 +147,21 @@ export interface EmployeeDetail {
   department_name?: string;
 }
 
+export interface DirectoryEmployee extends EmployeeDetail {
+  department_pk?: number;
+  salary_id?: number | null;
+  base_salary?: number | null;
+  allowance?: number | null;
+  bonus?: number | null;
+  added_bonus?: number | null;
+  employer_retirals?: number | null;
+  gross_salary?: number | null;
+  tax_deduction?: number | null;
+  net_salary?: number | null;
+  salary_status?: SalaryStatus | null;
+  calculation_snapshot?: CalculationSnapshot | null;
+}
+
 export interface CalculationSnapshot {
   annual_ctc: number;
   monthly_ctc: number;
@@ -72,6 +179,10 @@ export interface CalculationSnapshot {
   actual_days_worked?: number;
   generated_at: string;
   notes?: string;
+  overrides_applied?: {
+    modified_at: string;
+    customAdditions: Array<{ name: string; amount: number }>;
+  };
 }
 
 export interface EmployeeSalaryDetail {
@@ -82,6 +193,7 @@ export interface EmployeeSalaryDetail {
   base_salary: number;
   allowance: number;
   bonus: number;
+  added_bonus?: number;
   employer_retirals: number;
   gross_salary: number;
   tax_deduction: number;
@@ -91,6 +203,33 @@ export interface EmployeeSalaryDetail {
   paid_at?: string | null;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface CycleMetrics {
+  total_eligible: number;
+  total_records: number;
+  draft_count: number;
+  paid_count: number;
+  total_gross: number;
+  total_net: number;
+  status: CycleStatus;
+  bonus_recipients?: Array<{ employee_id: string; added_bonus: number }>;
+}
+
+export interface SalaryBatchRecord {
+  employee_id: number;
+  payout_month: number;
+  payout_year: number;
+  base_salary: number;
+  allowance: number;
+  bonus: number;
+  added_bonus?: number;
+  employer_retirals: number;
+  gross_salary: number;
+  tax_deduction: number;
+  net_salary: number;
+  calculation_snapshot: CalculationSnapshot;
+  status: SalaryStatus;
 }
 
 // Feathers-style Service Params & Results
@@ -150,5 +289,49 @@ export interface ServiceHooks<T = any> {
     create?: HookFunction<T>[];
     patch?: HookFunction<T>[];
     remove?: HookFunction<T>[];
+  };
+}
+
+// ==========================================
+// Application Errors
+// ==========================================
+
+export class AppError extends Error {
+  public statusCode: number;
+
+  constructor(message: string, statusCode: number = 400, name: string = 'AppError') {
+    super(message);
+    this.statusCode = statusCode;
+    this.name = name;
+  }
+}
+
+export interface ApiErrorResponse {
+  success: false;
+  statusCode: number;
+  code: string;
+  error: string;
+  timestamp: string;
+}
+
+export function formatErrorResponse(
+  err: unknown,
+  defaultStatus: number = 500,
+  defaultCode: string = 'ServerError'
+): { status: number; body: ApiErrorResponse } {
+  const status = (err as any)?.statusCode || defaultStatus;
+  const rawCode = (err as any)?.name || (err as any)?.code || defaultCode;
+  const message = (err as any)?.message || 'An unexpected error occurred';
+  const code = typeof rawCode === 'string' && rawCode !== 'Error' ? rawCode : defaultCode;
+
+  return {
+    status,
+    body: {
+      success: false,
+      statusCode: status,
+      code,
+      error: message,
+      timestamp: new Date().toISOString(),
+    },
   };
 }

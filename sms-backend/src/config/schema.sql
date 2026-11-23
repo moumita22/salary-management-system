@@ -66,6 +66,7 @@ CREATE TABLE employee_salary_details (
     base_salary NUMERIC(14, 2) NOT NULL,
     allowance NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
     bonus NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
+    added_bonus NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
     employer_retirals NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
     gross_salary NUMERIC(14, 2) NOT NULL,
     tax_deduction NUMERIC(14, 2) NOT NULL DEFAULT 0.00,

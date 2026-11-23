@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import Header from './components/Header.js';
-import DepartmentPills from './components/DepartmentPills.js';
-import FilterToolbar from './components/FilterToolbar.js';
-import EmployeeTable from './components/EmployeeTable.js';
-import SettlementView from './components/SettlementView.js';
-import Pagination from './components/Pagination.js';
-import PayslipModal from './components/PayslipModal.js';
-import SalaryEditModal from './components/SalaryEditModal.js';
+import {
+  Header,
+  DepartmentPills,
+  FilterToolbar,
+  EmployeeTable,
+  SettlementView,
+  Pagination,
+  PayslipModal,
+  SalaryEditModal,
+  GenerateConfirmModal,
+  DisburseConfirmModal,
+  ErrorModal,
+} from './components/index.js';
 import {
   getDepartments,
   getEmployees,
@@ -15,12 +20,15 @@ import {
   disbursePayroll,
   updateEmployeeSalary,
   generateSettlement,
+  disburseSettlement,
   getSalaryMetrics,
+  ApiError,
 } from './services/api.js';
 import type {
   Department,
   Employee,
   SalaryStatus,
+  CycleMetrics,
 } from './types/index.js';
 
 export default function App(): React.JSX.Element {
@@ -47,27 +55,106 @@ export default function App(): React.JSX.Element {
   const [exits, setExits] = useState<Employee[]>([]);
   const [loadingExits, setLoadingExits] = useState<boolean>(false);
   const [generatingSettlementId, setGeneratingSettlementId] = useState<number | null>(null);
+  const [disbursingSettlementId, setDisbursingSettlementId] = useState<number | null>(null);
 
   // Payroll Lifecycle State
   const [payoutPeriod, setPayoutPeriod] = useState<{ month: number; year: number }>({ month: 11, year: 2026 });
   const [payrollStatus, setPayrollStatus] = useState<SalaryStatus | string>('DRAFT');
+  const [cycleMetrics, setCycleMetrics] = useState<CycleMetrics | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isDisbursing, setIsDisbursing] = useState<boolean>(false);
 
-  // Sync Cycle Status whenever payoutPeriod changes
-  useEffect(() => {
-    getSalaryMetrics({ month: payoutPeriod.month, year: payoutPeriod.year })
-      .then((res) => {
-        if (res && res.status) {
+  // Dedicated Error Modal State
+  const [errorModal, setErrorModal] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    statusCode: number;
+    code?: string;
+    isCodeIssue?: boolean;
+    timestamp?: string;
+    onRetry?: () => void;
+  } | null>(null);
+
+  const [retryEmployeeCount, setRetryEmployeeCount] = useState<number>(0);
+  const [retryExitCount, setRetryExitCount] = useState<number>(0);
+
+  const showError = (err: unknown, fallbackMessage?: string, onRetry?: () => void) => {
+    console.error('[Application Error]:', err);
+    if (err instanceof ApiError) {
+      setErrorModal({
+        isOpen: true,
+        title: err.isCodeIssue ? 'System / Code Error' : 'Action Failed',
+        message: err.message,
+        statusCode: err.statusCode,
+        code: err.code,
+        isCodeIssue: err.isCodeIssue,
+        timestamp: err.timestamp,
+        onRetry,
+      });
+    } else {
+      const message = (err as any)?.message || fallbackMessage || 'An unexpected error occurred';
+      setErrorModal({
+        isOpen: true,
+        title: 'Unexpected Error',
+        message,
+        statusCode: 500,
+        code: 'UnexpectedException',
+        isCodeIssue: true,
+        timestamp: new Date().toLocaleTimeString(),
+        onRetry,
+      });
+    }
+  };
+
+  // Sync Cycle Status whenever payoutPeriod or selected department changes
+  const refreshMetrics = useCallback(async () => {
+    try {
+      const res = await getSalaryMetrics({
+        month: payoutPeriod.month,
+        year: payoutPeriod.year,
+        departmentId: selectedDeptId || undefined,
+      });
+      if (res) {
+        setCycleMetrics(res);
+        if (res.status) {
           setPayrollStatus(res.status);
         }
+      }
+    } catch (err) {
+      console.error('Failed to fetch salary metrics for period:', err);
+    }
+  }, [payoutPeriod, selectedDeptId]);
+
+  useEffect(() => {
+    let active = true;
+    getSalaryMetrics({
+      month: payoutPeriod.month,
+      year: payoutPeriod.year,
+      departmentId: selectedDeptId || undefined,
+    })
+      .then((res) => {
+        if (active && res) {
+          setCycleMetrics(res);
+          if (res.status) {
+            setPayrollStatus(res.status);
+          }
+        }
       })
-      .catch((err) => console.error('Failed to fetch salary metrics for period:', err));
-  }, [payoutPeriod]);
+      .catch((err) => {
+        console.error('Failed to fetch salary metrics for period:', err);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [payoutPeriod, selectedDeptId]);
 
   // Modals State
   const [payslipEmployee, setPayslipEmployee] = useState<Employee | null>(null);
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
+  const [isGenerateModalOpen, setIsGenerateModalOpen] = useState<boolean>(false);
+  const [isDisburseModalOpen, setIsDisburseModalOpen] = useState<boolean>(false);
   const [isSavingSalary, setIsSavingSalary] = useState<boolean>(false);
 
   // Toast / Notification State
@@ -94,7 +181,9 @@ export default function App(): React.JSX.Element {
         const depts = Array.isArray(data) ? data : data.departments || data.data || [];
         setDepartments(depts);
       })
-      .catch((err) => console.error('Failed to load departments:', err));
+      .catch((err) => {
+        showError(err, 'Failed to load departments');
+      });
   }, []);
 
   // 3. Load Employees whenever filters or pagination change
@@ -121,7 +210,7 @@ export default function App(): React.JSX.Element {
       setTotalPages(pages);
       if (data.payrollStatus) setPayrollStatus(data.payrollStatus);
     } catch (err) {
-      console.error('Error fetching employees:', err);
+      showError(err, 'Failed to load employees', () => setRetryEmployeeCount((c) => c + 1));
     } finally {
       setLoading(false);
     }
@@ -129,9 +218,10 @@ export default function App(): React.JSX.Element {
 
   useEffect(() => {
     if (activeView === 'directory') {
+      // oxlint-disable-next-line react/set-state-in-effect
       loadEmployees();
     }
-  }, [loadEmployees, activeView]);
+  }, [loadEmployees, activeView, retryEmployeeCount]);
 
   // 4. Load Exiting Employees when Exits tab is active
   const loadExits = useCallback(async () => {
@@ -144,7 +234,7 @@ export default function App(): React.JSX.Element {
       const exitList = Array.isArray(data) ? data : data.exits || data.data || [];
       setExits(exitList);
     } catch (err) {
-      console.error('Failed to load exits:', err);
+      showError(err, 'Failed to load exit settlements', () => setRetryExitCount((c) => c + 1));
     } finally {
       setLoadingExits(false);
     }
@@ -152,30 +242,23 @@ export default function App(): React.JSX.Element {
 
   useEffect(() => {
     if (activeView === 'exits') {
+      // oxlint-disable-next-line react/set-state-in-effect
       loadExits();
     }
-  }, [loadExits, activeView]);
+  }, [loadExits, activeView, retryExitCount]);
 
   const isFiltered = Boolean(selectedDeptId || countryCode || level || debouncedSearch);
 
-  // 5. Actions: Generate Monthly Payroll (for all or scoped to filtered employees)
-  const handleGeneratePayroll = async () => {
-    const periodLabel = `${payoutPeriod.month}/${payoutPeriod.year}`;
-    const targetLabel = isFiltered
-      ? `the ${totalItems.toLocaleString()} filtered employees`
-      : 'all eligible employees';
+  // 5. Actions: Open Payroll Generation Confirmation Dialog
+  const handleOpenGenerateModal = () => {
+    refreshMetrics();
+    setIsGenerateModalOpen(true);
+  };
 
-    if (
-      !window.confirm(
-        `Generate ${periodLabel} payroll for ${targetLabel} using database policy rules?`
-      )
-    ) {
-      return;
-    }
-
+  const handleConfirmGeneratePayroll = async () => {
     setIsGenerating(true);
     try {
-      const res: any = await generateMonthlyPayroll({
+      await generateMonthlyPayroll({
         month: payoutPeriod.month,
         year: payoutPeriod.year,
         departmentId: selectedDeptId || undefined,
@@ -183,27 +266,36 @@ export default function App(): React.JSX.Element {
         level: level || undefined,
         search: debouncedSearch || undefined,
       });
-      showToast(`🎉 Generated payroll for ${res.generatedCount?.toLocaleString() || res.count?.toLocaleString() || totalItems} employees!`);
+      setIsGenerateModalOpen(false);
       loadEmployees();
+      refreshMetrics();
       if (activeView === 'exits') loadExits();
     } catch (err: any) {
-      showToast(err.message, 'error');
+      showError(err, 'Failed to generate monthly payroll');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // 6. Actions: Disburse and Lock Payday
-  const handleDisbursePayroll = async () => {
-    const periodLabel = `${payoutPeriod.month}/${payoutPeriod.year}`;
-    if (
-      !window.confirm(
-        `Simulate month-end payday? All ${periodLabel} salaries will be marked PAID and locked against further edits.`
-      )
-    ) {
+  // 6. Actions: Disburse and Lock Payday (Confirmation Modal + Execution)
+  const handleOpenDisburseModal = () => {
+    if (selectedDeptId) {
+      showToast('Payday disbursement must be executed from All Departments', 'error');
       return;
     }
 
+    if (cycleMetrics && cycleMetrics.total_records < cycleMetrics.total_eligible) {
+      showToast(
+        `Cannot disburse payday: only ${cycleMetrics.total_records.toLocaleString()} of ${cycleMetrics.total_eligible.toLocaleString()} employees are generated. Please generate all departments first.`,
+        'error'
+      );
+      return;
+    }
+
+    setIsDisburseModalOpen(true);
+  };
+
+  const handleConfirmDisburse = async () => {
     setIsDisbursing(true);
     try {
       const res: any = await disbursePayroll({
@@ -211,11 +303,13 @@ export default function App(): React.JSX.Element {
         year: payoutPeriod.year,
       });
       setPayrollStatus('PAID');
+      setIsDisburseModalOpen(false);
       showToast(`🔒 Disbursed & locked ${res.lockedCount?.toLocaleString() || res.disbursedCount?.toLocaleString() || '10,000'} employee records!`);
       loadEmployees();
+      refreshMetrics();
       if (activeView === 'exits') loadExits();
     } catch (err: any) {
-      showToast(err.message, 'error');
+      showError(err, 'Failed to disburse payroll');
     } finally {
       setIsDisbursing(false);
     }
@@ -233,8 +327,9 @@ export default function App(): React.JSX.Element {
       showToast('Salary adjustments saved successfully!');
       setEditEmployee(null);
       loadEmployees();
+      refreshMetrics();
     } catch (err: any) {
-      showToast(err.message, 'error');
+      showError(err, 'Failed to save salary adjustments');
     } finally {
       setIsSavingSalary(false);
     }
@@ -251,9 +346,27 @@ export default function App(): React.JSX.Element {
       showToast(`Settlement generated: ${res.netSalary ? `$${res.netSalary.toLocaleString()}` : 'Completed'}`);
       loadExits();
     } catch (err: any) {
-      showToast(err.message, 'error');
+      showError(err, 'Failed to generate exit settlement');
     } finally {
       setGeneratingSettlementId(null);
+    }
+  };
+
+  // 9. Actions: Disburse and Lock Exit Settlement for an Exiting Employee
+  const handleDisburseSettlement = async (empId: number) => {
+    setDisbursingSettlementId(empId);
+    try {
+      await disburseSettlement(empId, {
+        month: payoutPeriod.month,
+        year: payoutPeriod.year,
+      });
+      showToast('Settlement disbursed and permanently locked.');
+      loadExits();
+      refreshMetrics();
+    } catch (err: any) {
+      showError(err, 'Failed to disburse exit settlement');
+    } finally {
+      setDisbursingSettlementId(null);
     }
   };
 
@@ -288,14 +401,9 @@ export default function App(): React.JSX.Element {
         setActiveView={setActiveView}
         payoutPeriod={payoutPeriod}
         onPeriodChange={setPayoutPeriod}
-        onGeneratePayroll={handleGeneratePayroll}
-        onDisbursePayroll={handleDisbursePayroll}
-        isGenerating={isGenerating}
-        isDisbursing={isDisbursing}
         payrollStatus={payrollStatus}
+        cycleMetrics={cycleMetrics}
         exitsCount={exits.length}
-        filteredCount={totalItems}
-        isFiltered={isFiltered}
       />
 
       {/* Main Content Area */}
@@ -312,7 +420,7 @@ export default function App(): React.JSX.Element {
               }}
             />
 
-            {/* Filter Toolbar */}
+            {/* Filter Toolbar (with Action Buttons between Search and Country Filter) */}
             <FilterToolbar
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
@@ -326,10 +434,17 @@ export default function App(): React.JSX.Element {
                 setLevel(lvl);
                 setCurrentPage(1);
               }}
-              payoutPeriod={payoutPeriod}
-              onPeriodChange={setPayoutPeriod}
               onResetFilters={handleResetFilters}
               totalResults={totalItems}
+              onGeneratePayroll={handleOpenGenerateModal}
+              onDisbursePayroll={handleOpenDisburseModal}
+              isGenerating={isGenerating}
+              isDisbursing={isDisbursing}
+              payrollStatus={payrollStatus}
+              selectedDeptId={selectedDeptId}
+              cycleMetrics={cycleMetrics}
+              filteredCount={totalItems}
+              isFiltered={isFiltered}
             />
 
             {/* Employee Table & Pagination */}
@@ -362,7 +477,10 @@ export default function App(): React.JSX.Element {
               exits={exits}
               loading={loadingExits}
               onGenerateSettlement={handleGenerateSettlement}
+              onDisburseSettlement={handleDisburseSettlement}
+              onViewPayslip={setPayslipEmployee}
               generatingId={generatingSettlementId}
+              disbursingId={disbursingSettlementId}
             />
           </div>
         )}
@@ -380,10 +498,50 @@ export default function App(): React.JSX.Element {
       {/* Salary Adjustment Editor Modal */}
       {editEmployee && (
         <SalaryEditModal
+          key={editEmployee.id}
           employee={editEmployee}
           onClose={() => setEditEmployee(null)}
           onSave={handleSaveSalaryAdjustment}
           isSaving={isSavingSalary}
+        />
+      )}
+
+      {/* Payroll Generation Confirmation Modal */}
+      <GenerateConfirmModal
+        isOpen={isGenerateModalOpen}
+        onClose={() => setIsGenerateModalOpen(false)}
+        onConfirm={handleConfirmGeneratePayroll}
+        isGenerating={isGenerating}
+        payoutPeriod={payoutPeriod}
+        targetLabel={
+          isFiltered
+            ? `${totalItems.toLocaleString()} filtered employees`
+            : 'All Departments (10,000 employees)'
+        }
+        bonusRecipients={cycleMetrics?.bonus_recipients || []}
+      />
+
+      {/* Payday Disbursement Confirmation Modal */}
+      <DisburseConfirmModal
+        isOpen={isDisburseModalOpen}
+        onClose={() => setIsDisburseModalOpen(false)}
+        onConfirm={handleConfirmDisburse}
+        isDisbursing={isDisbursing}
+        payoutPeriod={payoutPeriod}
+      />
+
+      {/* Global Error Modal for API / System / Code Issues */}
+      {errorModal && (
+        <ErrorModal
+          isOpen={errorModal.isOpen}
+          onClose={() => setErrorModal(null)}
+          title={errorModal.title}
+          message={errorModal.message}
+          statusCode={errorModal.statusCode}
+          code={errorModal.code}
+          isCodeIssue={errorModal.isCodeIssue}
+          timestamp={errorModal.timestamp}
+          onRetry={errorModal.onRetry}
         />
       )}
     </div>

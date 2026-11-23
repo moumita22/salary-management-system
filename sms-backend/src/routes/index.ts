@@ -6,12 +6,14 @@ import {
   getEmployees,
   getExitingEmployees,
   getEmployeeById,
+  getEmployeeByCode,
 } from '../controllers/employees.controller.js';
 import {
   generatePayroll,
   disbursePayroll,
   updateSalary,
   generateSettlement,
+  disburseSettlement,
   getSalaryMetrics,
 } from '../controllers/salaries.controller.js';
 
@@ -29,8 +31,9 @@ router.get('/roles/:id', getRoleById);
 router.get('/rules', getRules);
 router.patch('/rules/:id', updateRule);
 
-// Employees (Exits must precede /:id)
+// Employees (Exits & Code lookups must precede /:id)
 router.get('/employees/exits', getExitingEmployees);
+router.get('/employees/code/:code', getEmployeeByCode);
 router.get('/employees', getEmployees);
 router.get('/employees/:id', getEmployeeById);
 
@@ -38,6 +41,7 @@ router.get('/employees/:id', getEmployeeById);
 router.post('/salaries/generate', generatePayroll);
 router.post('/salaries/disburse', disbursePayroll);
 router.put('/salaries/:id', updateSalary);
+router.post('/salaries/settlement/:id/disburse', disburseSettlement);
 router.post('/salaries/settlement/:id', generateSettlement);
 router.get('/salaries/metrics', getSalaryMetrics);
 

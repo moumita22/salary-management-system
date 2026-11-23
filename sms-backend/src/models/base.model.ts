@@ -1,30 +1,13 @@
 import { query } from '../config/db.js';
+import type {
+  PaginationOptions,
+  PaginationResult,
+  QueryParam,
+  QueryRow,
+} from '../types/index.js';
 
-export interface PaginationOptions<T = any> {
-  page?: number;
-  limit?: number;
-  filter?: Partial<T>;
-  sort?: {
-    field?: keyof T | string;
-    order?: 'ASC' | 'DESC' | 'asc' | 'desc';
-  };
-  search?: {
-    query: string;
-    columns: Array<keyof T | string>;
-  };
-}
-
-export interface PaginationResult<T> {
-  data: T[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-    hasNextPage: boolean;
-    hasPrevPage: boolean;
-  };
-}
+// Re-export pagination types for backward compatibility
+export type { PaginationOptions, PaginationResult };
 
 /**
  * Generic typed BaseModel class providing CRUD, server-side pagination,
@@ -60,22 +43,22 @@ export class BaseModel<T extends Record<string, any>> {
    */
   async find(filter: Partial<T> = {}): Promise<T[]> {
     const conditions: string[] = [];
-    const values: any[] = [];
+    const values: QueryParam[] = [];
     let paramIndex = 1;
 
     for (const [key, value] of Object.entries(filter)) {
       if (value !== undefined && value !== null) {
         this.assertValidColumn(key);
         conditions.push(`"${key}" = $${paramIndex}`);
-        values.push(value);
+        values.push(value as QueryParam);
         paramIndex++;
       }
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const sql = `SELECT * FROM "${this.tableName}" ${whereClause} ORDER BY "${this.primaryKey}" ASC`;
-    const res = await query(sql, values);
-    return res.rows as T[];
+    const res = await query<T>(sql, values);
+    return res.rows;
   }
 
   /**
@@ -83,8 +66,8 @@ export class BaseModel<T extends Record<string, any>> {
    */
   async findById(id: number | string): Promise<T | null> {
     const sql = `SELECT * FROM "${this.tableName}" WHERE "${this.primaryKey}" = $1 LIMIT 1`;
-    const res = await query(sql, [id]);
-    return res.rows.length > 0 ? (res.rows[0] as T) : null;
+    const res = await query<T>(sql, [id as QueryParam]);
+    return res.rows.length > 0 ? res.rows[0] : null;
   }
 
   /**
@@ -96,7 +79,7 @@ export class BaseModel<T extends Record<string, any>> {
     const offset = (page - 1) * limit;
 
     const conditions: string[] = [];
-    const values: any[] = [];
+    const values: QueryParam[] = [];
     let paramIndex = 1;
 
     // 1. Structured Filter Equality (Column Allowlist checked)
@@ -105,7 +88,7 @@ export class BaseModel<T extends Record<string, any>> {
         if (value !== undefined && value !== null && value !== '') {
           this.assertValidColumn(key);
           conditions.push(`"${key}" = $${paramIndex}`);
-          values.push(value);
+          values.push(value as QueryParam);
           paramIndex++;
         }
       }
@@ -119,7 +102,7 @@ export class BaseModel<T extends Record<string, any>> {
         return `"${validatedCol}"::text ILIKE $${paramIndex}`;
       });
       conditions.push(`(${searchConditions.join(' OR ')})`);
-      values.push(searchTerm);
+      values.push(searchTerm as QueryParam);
       paramIndex++;
     }
 
@@ -127,8 +110,8 @@ export class BaseModel<T extends Record<string, any>> {
 
     // Total Count Query
     const countSql = `SELECT COUNT(*)::int AS total FROM "${this.tableName}" ${whereClause}`;
-    const countRes = await query(countSql, values);
-    const total = countRes.rows[0].total;
+    const countRes = await query<{ total: number }>(countSql, values);
+    const total = Number(countRes.rows[0]?.total || 0);
 
     // 3. Sort setup (Column Allowlist checked)
     const rawSortField = options.sort?.field ? String(options.sort.field) : this.primaryKey;
@@ -142,12 +125,12 @@ export class BaseModel<T extends Record<string, any>> {
       ORDER BY "${sortField}" ${sortOrder}
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
-    const dataRes = await query(dataSql, [...values, limit, offset]);
+    const dataRes = await query<T>(dataSql, [...values, limit, offset]);
 
     const totalPages = Math.ceil(total / limit) || 1;
 
     return {
-      data: dataRes.rows as T[],
+      data: dataRes.rows,
       pagination: {
         total,
         page,
@@ -163,38 +146,40 @@ export class BaseModel<T extends Record<string, any>> {
    * Insert a new record
    */
   async create(data: Partial<T>): Promise<T> {
-    const keys = Object.keys(data).filter((k) => data[k as keyof T] !== undefined);
+    const keys = (Object.keys(data) as Array<keyof T>).filter(
+      (k) => data[k] !== undefined
+    );
     if (keys.length === 0) {
       throw new Error(`Cannot insert empty record into ${this.tableName}`);
     }
 
-    keys.forEach((key) => this.assertValidColumn(key));
+    keys.forEach((key) => this.assertValidColumn(String(key)));
 
-    const cols = keys.map((k) => `"${k}"`).join(', ');
+    const cols = keys.map((k) => `"${String(k)}"`).join(', ');
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-    const values = keys.map((k) => data[k as keyof T]);
+    const values: QueryParam[] = keys.map((k) => data[k] as QueryParam);
 
     const sql = `INSERT INTO "${this.tableName}" (${cols}) VALUES (${placeholders}) RETURNING *`;
-    const res = await query(sql, values);
-    return res.rows[0] as T;
+    const res = await query<T>(sql, values);
+    return res.rows[0];
   }
 
   /**
    * Update an existing record by primary key
    */
   async update(id: number | string, data: Partial<T>): Promise<T | null> {
-    const keys = Object.keys(data).filter(
-      (k) => data[k as keyof T] !== undefined && k !== this.primaryKey
+    const keys = (Object.keys(data) as Array<keyof T>).filter(
+      (k) => data[k] !== undefined && String(k) !== this.primaryKey
     );
     if (keys.length === 0) {
       return this.findById(id);
     }
 
-    keys.forEach((key) => this.assertValidColumn(key));
+    keys.forEach((key) => this.assertValidColumn(String(key)));
 
-    const setClauses = keys.map((k, i) => `"${k}" = $${i + 1}`).join(', ');
-    const values = keys.map((k) => data[k as keyof T]);
-    values.push(id);
+    const setClauses = keys.map((k, i) => `"${String(k)}" = $${i + 1}`).join(', ');
+    const values: QueryParam[] = keys.map((k) => data[k] as QueryParam);
+    values.push(id as QueryParam);
 
     const sql = `
       UPDATE "${this.tableName}"
@@ -202,8 +187,8 @@ export class BaseModel<T extends Record<string, any>> {
       WHERE "${this.primaryKey}" = $${values.length}
       RETURNING *
     `;
-    const res = await query(sql, values);
-    return res.rows.length > 0 ? (res.rows[0] as T) : null;
+    const res = await query<T>(sql, values);
+    return res.rows.length > 0 ? res.rows[0] : null;
   }
 
   /**
@@ -211,15 +196,15 @@ export class BaseModel<T extends Record<string, any>> {
    */
   async delete(id: number | string): Promise<T | null> {
     const sql = `DELETE FROM "${this.tableName}" WHERE "${this.primaryKey}" = $1 RETURNING *`;
-    const res = await query(sql, [id]);
-    return res.rows.length > 0 ? (res.rows[0] as T) : null;
+    const res = await query<T>(sql, [id as QueryParam]);
+    return res.rows.length > 0 ? res.rows[0] : null;
   }
 
   /**
    * Raw query execution helper
    */
-  async raw<R = any>(sql: string, params: any[] = []): Promise<R[]> {
-    const res = await query(sql, params);
-    return res.rows as R[];
+  async raw<R = QueryRow>(sql: string, params: QueryParam[] = []): Promise<R[]> {
+    const res = await query<R>(sql, params);
+    return res.rows;
   }
 }

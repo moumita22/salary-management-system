@@ -1,13 +1,19 @@
 import { Request, Response } from 'express';
 import { salaryComponentRuleModel } from '../models/salary_component_rules.model.js';
 import { salaryCalculatorService } from '../services/salaryCalculator.service.js';
+import { formatErrorResponse } from '../types/index.js';
 
-export const getRules = async (_req: Request, res: Response): Promise<void> => {
+export const getRules = async (req: Request, res: Response): Promise<void> => {
   try {
-    const rules = await salaryComponentRuleModel.findAllWithDetails();
+    const { countryCode, roleId } = req.query;
+    const rules = await salaryComponentRuleModel.findAllWithDetails({
+      countryCode: countryCode ? String(countryCode) : undefined,
+      roleId: roleId ? Number(roleId) : undefined,
+    });
     res.json(rules);
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Failed to fetch rules' });
+    const { status, body } = formatErrorResponse(error, 500, 'RuleFetchError');
+    res.status(status).json(body);
   }
 };
 
@@ -16,7 +22,12 @@ export const updateRule = async (req: Request, res: Response): Promise<void> => 
     const id = Number(req.params.id);
     const existing = await salaryComponentRuleModel.findById(id);
     if (!existing) {
-      res.status(404).json({ error: `Rule ${id} not found` });
+      const { status, body } = formatErrorResponse(
+        new Error(`Rule ${id} not found`),
+        404,
+        'RuleNotFoundError'
+      );
+      res.status(status).json(body);
       return;
     }
 
@@ -34,7 +45,7 @@ export const updateRule = async (req: Request, res: Response): Promise<void> => 
     const updated = await salaryComponentRuleModel.update(id, payload);
     res.json(updated);
   } catch (error: any) {
-    const status = error.statusCode || 400;
-    res.status(status).json({ error: error.message || 'Failed to update rule' });
+    const { status, body } = formatErrorResponse(error, 400, 'RuleUpdateError');
+    res.status(status).json(body);
   }
 };

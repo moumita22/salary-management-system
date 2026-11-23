@@ -4,12 +4,22 @@ import { employeeSalaryDetailModel } from '../models/employee_salary_details.mod
 import { employeeDetailModel } from '../models/employee_details.model.js';
 import { salaryComponentRuleModel } from '../models/salary_component_rules.model.js';
 import { departmentModel } from '../models/departments.model.js';
+import {
+  AppError,
+  type QueryParam,
+  type SalaryBatchRecord,
+  type EmployeeSalaryDetail,
+  type SalaryComponentRule,
+  type SeniorityLevel,
+} from '../types/index.js';
+import { getCycleDates, type CalculatedFinancials } from '../utils/index.js';
 
 export interface PayrollFilterOptions {
   departmentId?: string | number;
   countryCode?: string;
   level?: string;
   search?: string;
+  status?: string;
 }
 
 export class PayrollService {
@@ -19,12 +29,11 @@ export class PayrollService {
    */
   assertNotPaid(record: { status: string }): void {
     if (record.status === 'PAID') {
-      const err: any = new Error(
-        'Financial Immutability Violation: Payroll for this employee and period has been PAID and locked against modification.'
+      throw new AppError(
+        'Financial Immutability Violation: Payroll for this employee and period has been PAID and locked against modification.',
+        403,
+        'FinancialLockError'
       );
-      err.statusCode = 403;
-      err.name = 'FinancialLockError';
-      throw err;
     }
   }
 
@@ -40,40 +49,37 @@ export class PayrollService {
   ): Promise<{ success: boolean; generatedCount: number; durationMs: number }> {
     const startTime = Date.now();
 
-    // 1. Guard against re-generating an already finalized/paid month
-    const metrics = await employeeSalaryDetailModel.getCycleMetrics(month, year);
+    // 1. Guard against re-generating an already finalized/paid scope
+    const metrics = await employeeSalaryDetailModel.getCycleMetrics(month, year, filters.departmentId);
     if (metrics.status === 'PAID') {
-      const err: any = new Error(
-        `Payroll for ${month}/${year} is finalized and locked (status: PAID). Cannot re-generate.`
+      const scopeLabel = filters.departmentId ? 'for this department' : `for ${month}/${year}`;
+      throw new AppError(
+        `Payroll ${scopeLabel} is finalized and locked (status: PAID). Cannot re-generate.`,
+        403,
+        'FinancialLockError'
       );
-      err.statusCode = 403;
-      throw err;
     }
 
-    // 2. Load all policy rules into an in-memory lookup map: `${role_id}_${country_code}`
-    const rulesList = await salaryComponentRuleModel.find();
-    const rulesMap = new Map<string, any>();
+    // 2. Load all policy rules with native float percentages into an in-memory lookup map: `${role_id}_${country_code}`
+    const rulesList = await salaryComponentRuleModel.findAllWithDetails();
+    const rulesMap = new Map<string, SalaryComponentRule>();
     for (const rule of rulesList) {
       rulesMap.set(`${rule.role_id}_${rule.country_code}`, rule);
     }
 
     // 3. Load all eligible employees active during this cycle (with optional scoping filters)
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const cycleStart = `${year}-${String(month).padStart(2, '0')}-01`;
-    const cycleEnd = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+    const { cycleStart, cycleEnd, daysInMonth } = getCycleDates(month, year);
 
     const conditions: string[] = [
       'e.date_of_joining <= $2',
       '(e.last_working_day IS NULL OR e.last_working_day >= $1)',
+      "e.status = 'ACTIVE'",
     ];
-    const values: any[] = [cycleStart, cycleEnd];
+    const values: QueryParam[] = [cycleStart, cycleEnd];
     let pIdx = 3;
 
     if (filters.departmentId) {
-      const isCode = typeof filters.departmentId === 'string' && filters.departmentId.startsWith('DEP-');
-      const dept = isCode
-        ? await departmentModel.findByCode(filters.departmentId)
-        : await departmentModel.findById(Number(filters.departmentId));
+      const dept = await departmentModel.findByIdOrCode(filters.departmentId);
       if (dept) {
         conditions.push(`r.department_id = $${pIdx++}`);
         values.push(dept.id);
@@ -93,10 +99,18 @@ export class PayrollService {
     }
 
     if (filters.search && filters.search.trim()) {
+      const cleanSearch = filters.search.trim().replace(/\s+/g, ' ');
       conditions.push(
-        `(e.first_name ILIKE $${pIdx} OR e.last_name ILIKE $${pIdx} OR e.employee_id ILIKE $${pIdx} OR e.email ILIKE $${pIdx})`
+        `(
+          e.first_name ILIKE $${pIdx}
+          OR e.last_name ILIKE $${pIdx}
+          OR CONCAT(e.first_name, ' ', e.last_name) ILIKE $${pIdx}
+          OR CONCAT(e.last_name, ' ', e.first_name) ILIKE $${pIdx}
+          OR e.employee_id ILIKE $${pIdx}
+          OR e.email ILIKE $${pIdx}
+        )`
       );
-      values.push(`%${filters.search.trim()}%`);
+      values.push(`%${cleanSearch}%`);
       pIdx++;
     }
 
@@ -121,8 +135,23 @@ export class PayrollService {
     const employeesRes = await query(employeesSql, values);
     const employees = employeesRes.rows;
 
-    // 4. Transform and calculate each employee's salary breakdown in memory using Integer Cents
-    const calculatedRows: any[] = [];
+    // 4. Query existing draft added_bonus adjustments to preserve manual spot bonuses
+    const existingAdjustmentsRes = await query(
+      `SELECT employee_id, added_bonus, calculation_snapshot
+       FROM employee_salary_details
+       WHERE payout_month = $1 AND payout_year = $2 AND status = 'DRAFT' AND added_bonus > 0`,
+      [month, year]
+    );
+    const preservedBonusMap = new Map<number, { added_bonus: number; overrides: any }>();
+    for (const row of existingAdjustmentsRes.rows) {
+      preservedBonusMap.set(Number(row.employee_id), {
+        added_bonus: Number(row.added_bonus) || 0,
+        overrides: row.calculation_snapshot?.overrides_applied || null,
+      });
+    }
+
+    // 5. Transform and calculate each employee's salary breakdown in memory using Integer Cents
+    const calculatedRows: SalaryBatchRecord[] = [];
     for (const emp of employees) {
       const rule = rulesMap.get(`${emp.role_id}_${emp.country_code}`);
       if (!rule) {
@@ -144,8 +173,10 @@ export class PayrollService {
         joinDate.getFullYear() === year &&
         joinDate.getDate() > 1;
 
-      let financials: any;
-      let prorationMeta: any = undefined;
+      let financials: CalculatedFinancials;
+      let prorationMeta:
+        | { is_prorated: boolean; total_working_days: number; actual_days_worked: number }
+        | undefined = undefined;
 
       if (isExitThisMonth) {
         financials = salaryCalculatorService.calculateProratedSettlement(
@@ -180,6 +211,23 @@ export class PayrollService {
         );
       }
 
+      // Check if this employee has an existing manual added_bonus to preserve
+      const preserved = preservedBonusMap.get(emp.id);
+      const addedBonus = preserved ? preserved.added_bonus : 0;
+
+      let finalGross = financials.gross_salary;
+      let finalTax = financials.tax_deduction;
+      let finalNet = financials.net_salary;
+
+      if (addedBonus > 0) {
+        finalGross = Number(
+          (financials.base_salary + financials.allowance + financials.bonus + addedBonus).toFixed(2)
+        );
+        const deductionPct = Number(rule.deduction_percentage) || 12;
+        finalTax = Number((finalGross * (deductionPct / 100)).toFixed(2));
+        finalNet = Number((finalGross - finalTax).toFixed(2));
+      }
+
       const snapshot = salaryCalculatorService.buildSnapshot(
         financials,
         rule,
@@ -192,6 +240,13 @@ export class PayrollService {
         prorationMeta
       );
 
+      if (addedBonus > 0) {
+        snapshot.overrides_applied = preserved?.overrides || {
+          modified_at: new Date().toISOString(),
+          customAdditions: [{ name: 'Added Bonus', amount: addedBonus }],
+        };
+      }
+
       calculatedRows.push({
         employee_id: emp.id,
         payout_month: month,
@@ -199,16 +254,17 @@ export class PayrollService {
         base_salary: financials.base_salary,
         allowance: financials.allowance,
         bonus: financials.bonus,
+        added_bonus: addedBonus,
         employer_retirals: financials.employer_retirals,
-        gross_salary: financials.gross_salary,
-        tax_deduction: financials.tax_deduction,
-        net_salary: financials.net_salary,
+        gross_salary: finalGross,
+        tax_deduction: finalTax,
+        net_salary: finalNet,
         calculation_snapshot: snapshot,
         status: 'DRAFT',
       });
     }
 
-    // 5. ACID Database Transaction with batch chunking (1,000 rows per batch)
+    // 6. ACID Database Transaction with batch chunking (1,000 rows per batch)
     const client = await pool.connect();
     let totalInserted = 0;
     const CHUNK_SIZE = 1000;
@@ -245,14 +301,14 @@ export class PayrollService {
     employeeId: number,
     month: number,
     year: number,
-    overrides: {
+    customAdditions: Array<{ name: string; amount: number }> = [],
+    overrides?: {
       base_salary?: number;
       allowance?: number;
       bonus?: number;
       tax_deduction?: number;
-    },
-    customAdditions: Array<{ name: string; amount: number }> = []
-  ): Promise<any> {
+    }
+  ): Promise<EmployeeSalaryDetail> {
     const existing = await employeeSalaryDetailModel.findByEmployeeAndCycle(
       employeeId,
       month,
@@ -260,19 +316,18 @@ export class PayrollService {
     );
 
     if (!existing) {
-      const err: any = new Error(
-        `No salary draft found for employee ID ${employeeId} in ${month}/${year}. Generate payroll first.`
+      throw new AppError(
+        `No salary draft found for employee ID ${employeeId} in ${month}/${year}. Generate payroll first.`,
+        404
       );
-      err.statusCode = 404;
-      throw err;
     }
 
     // Financial Immutability Guard
     this.assertNotPaid(existing);
 
-    const baseSalary = overrides.base_salary !== undefined ? overrides.base_salary : Number(existing.base_salary);
-    const allowance = overrides.allowance !== undefined ? overrides.allowance : Number(existing.allowance);
-    const bonus = overrides.bonus !== undefined ? overrides.bonus : Number(existing.bonus);
+    const baseSalary = overrides?.base_salary !== undefined ? overrides.base_salary : Number(existing.base_salary);
+    const allowance = overrides?.allowance !== undefined ? overrides.allowance : Number(existing.allowance);
+    const bonus = overrides?.bonus !== undefined ? overrides.bonus : Number(existing.bonus);
 
     const customTotal = customAdditions.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
     const deductionPct = existing.calculation_snapshot?.deduction_percentage || 12;
@@ -285,19 +340,21 @@ export class PayrollService {
       customTotal
     );
 
-    const updatedSnapshot = {
-      ...existing.calculation_snapshot,
-      overrides_applied: {
-        overrides,
-        customAdditions,
+    const updatedSnapshot: any = { ...existing.calculation_snapshot };
+    if (customAdditions.length > 0) {
+      updatedSnapshot.overrides_applied = {
         modified_at: new Date().toISOString(),
-      },
-    };
+        customAdditions,
+      };
+    } else {
+      delete updatedSnapshot.overrides_applied;
+    }
 
     return employeeSalaryDetailModel.update(existing.id, {
       base_salary: recalculated.base_salary,
       allowance: recalculated.allowance,
       bonus: recalculated.bonus,
+      added_bonus: recalculated.added_bonus,
       gross_salary: recalculated.gross_salary,
       tax_deduction: recalculated.tax_deduction,
       net_salary: recalculated.net_salary,
@@ -307,16 +364,84 @@ export class PayrollService {
 
   /**
    * Disburse & Lock Payroll (Month-End Payday event)
+   * Also transitions any disbursed exiting employees to TERMINATED
    */
   async disbursePayroll(
     month: number = 11,
     year: number = 2026
   ): Promise<{ success: boolean; lockedCount: number }> {
-    const lockedCount = await employeeSalaryDetailModel.disburseCycle(month, year);
-    return {
-      success: true,
-      lockedCount,
-    };
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const lockedCount = await employeeSalaryDetailModel.disburseCycle(month, year, client);
+
+      // Transition any exiting employees who were disbursed to TERMINATED
+      await client.query(
+        `UPDATE employee_details e
+         SET status = 'TERMINATED', updated_at = NOW()
+         FROM employee_salary_details s
+         WHERE s.employee_id = e.id
+           AND s.payout_month = $1
+           AND s.payout_year = $2
+           AND s.status = 'PAID'
+           AND e.status = 'EXITING'`,
+        [month, year]
+      );
+
+      await client.query('COMMIT');
+      return {
+        success: true,
+        lockedCount,
+      };
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Disburse & Lock individual employee settlement (FnF event)
+   * Atomically transitions employee_details status from 'EXITING' to 'TERMINATED'
+   */
+  async disburseIndividualSettlement(
+    employeeId: number,
+    month: number = 11,
+    year: number = 2026
+  ): Promise<any> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const disbursed = await employeeSalaryDetailModel.disburseIndividual(
+        employeeId,
+        month,
+        year,
+        client
+      );
+
+      if (!disbursed) {
+        throw new AppError(
+          `Cannot disburse settlement: record not found in Draft status for employee ${employeeId}`,
+          400
+        );
+      }
+
+      // Transition employee_details status from EXITING to TERMINATED
+      await client.query(
+        "UPDATE employee_details SET status = 'TERMINATED', updated_at = NOW() WHERE id = $1",
+        [employeeId]
+      );
+
+      await client.query('COMMIT');
+      return disbursed;
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
   }
 
   /**
@@ -326,18 +451,14 @@ export class PayrollService {
     employeeId: number,
     month: number = 11,
     year: number = 2026
-  ): Promise<any> {
-    const emp = await employeeDetailModel.findById(employeeId);
+  ): Promise<EmployeeSalaryDetail> {
+    const emp = await employeeDetailModel.findByIdWithDetails(employeeId);
     if (!emp) {
-      const err: any = new Error(`Employee with ID ${employeeId} not found`);
-      err.statusCode = 404;
-      throw err;
+      throw new AppError(`Employee with ID ${employeeId} not found`, 404);
     }
 
     if (!emp.last_working_day) {
-      const err: any = new Error(`Employee ${emp.employee_id} does not have a designated Last Working Day`);
-      err.statusCode = 400;
-      throw err;
+      throw new AppError(`Employee ${emp.employee_id} does not have a designated Last Working Day`, 400);
     }
 
     const rule = await salaryComponentRuleModel.findByRoleAndCountry(
@@ -345,9 +466,7 @@ export class PayrollService {
       emp.country_code
     );
     if (!rule) {
-      const err: any = new Error(`Policy rule not found for Role ${emp.role_id} and Country ${emp.country_code}`);
-      err.statusCode = 404;
-      throw err;
+      throw new AppError(`Policy rule not found for Role ${emp.role_id} and Country ${emp.country_code}`, 404);
     }
 
     const financials = salaryCalculatorService.calculateProratedSettlement(
@@ -358,23 +477,14 @@ export class PayrollService {
       emp.last_working_day
     );
 
-    // Fetch role & dept info for snapshot
-    const details = await employeeDetailModel.findDirectoryPaginated({
-      search: emp.employee_id,
-      limit: 1,
-      month,
-      year,
-    });
-    const meta = details.data[0] || {};
-
     const snapshot = salaryCalculatorService.buildSnapshot(
       financials,
       rule,
       {
-        role_title: meta.role_title || '',
-        role_level: meta.role_level || '',
+        role_title: emp.role_title || '',
+        role_level: (emp.role_level as SeniorityLevel) || 'MID_LEVEL',
         country_code: emp.country_code,
-        department_name: meta.department_name || '',
+        department_name: emp.department_name || '',
       },
       {
         is_prorated: true,
