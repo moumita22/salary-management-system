@@ -16,6 +16,7 @@ export const getEmployees = async (req: Request, res: Response): Promise<void> =
       year = '2026',
       sortField,
       sortOrder,
+      allEmployees,
     } = req.query;
 
     const result = await employeeService.getDirectoryPaginated({
@@ -30,6 +31,7 @@ export const getEmployees = async (req: Request, res: Response): Promise<void> =
       year: parseInt(String(year), 10) || 2026,
       sortField: sortField ? String(sortField) : undefined,
       sortOrder: sortOrder === 'DESC' ? 'DESC' : 'ASC',
+      ignoreCycleDates: allEmployees === 'true' || allEmployees === '1',
     });
 
     res.json(result);
@@ -85,6 +87,35 @@ export const getEmployeeByCode = async (req: Request, res: Response): Promise<vo
     res.json(emp);
   } catch (error: any) {
     const { status, body } = formatErrorResponse(error, 500, 'EmployeeFetchError');
+    res.status(status).json(body);
+  }
+};
+
+export const createEmployee = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const newEmployee = await employeeService.createEmployee(req.body);
+    res.status(201).json({
+      success: true,
+      message: 'Employee created successfully',
+      employee: newEmployee,
+    });
+  } catch (error: unknown) {
+    const { status, body } = formatErrorResponse(error, 400, 'EmployeeCreationError');
+    res.status(status).json(body);
+  }
+};
+
+export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = Number(req.params.id);
+    const updated = await employeeService.updateEmployee(id, req.body);
+    res.json({
+      success: true,
+      message: 'Employee updated successfully',
+      employee: updated,
+    });
+  } catch (error: unknown) {
+    const { status, body } = formatErrorResponse(error, 400, 'EmployeeUpdateError');
     res.status(status).json(body);
   }
 };

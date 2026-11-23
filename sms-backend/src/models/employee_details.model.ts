@@ -31,6 +31,7 @@ export interface EmployeeDirectoryOptions {
   year?: number;
   sortField?: string;
   sortOrder?: 'ASC' | 'DESC';
+  ignoreCycleDates?: boolean;
 }
 
 export class EmployeeDetailModel extends BaseModel<EmployeeDetail> {
@@ -142,16 +143,18 @@ export class EmployeeDetailModel extends BaseModel<EmployeeDetail> {
     const values: QueryParam[] = [];
     let paramIndex = 1;
 
-    // Employment lifecycle eligibility guard:
-    // 1. Employee must have joined on or before the last day of this cycle
-    conditions.push(`e.date_of_joining <= $${paramIndex}`);
-    values.push(cycleEnd);
-    paramIndex++;
+    // Employment lifecycle eligibility guard (for payroll cycles):
+    if (!options.ignoreCycleDates && options.status !== 'ALL' && options.status !== 'TERMINATED') {
+      // 1. Employee must have joined on or before the last day of this cycle
+      conditions.push(`e.date_of_joining <= $${paramIndex}`);
+      values.push(cycleEnd);
+      paramIndex++;
 
-    // 2. Employee must NOT have exited prior to the first day of this cycle
-    conditions.push(`(e.last_working_day IS NULL OR e.last_working_day >= $${paramIndex})`);
-    values.push(cycleStart);
-    paramIndex++;
+      // 2. Employee must NOT have exited prior to the first day of this cycle
+      conditions.push(`(e.last_working_day IS NULL OR e.last_working_day >= $${paramIndex})`);
+      values.push(cycleStart);
+      paramIndex++;
+    }
 
     // Filter by department: Resolves UK (e.g. 'DEP-08') or ID to integer PK
     if (options.departmentId) {

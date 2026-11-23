@@ -1,5 +1,6 @@
 export { default as DepartmentPills } from './DepartmentPills.js';
 export { default as DisburseConfirmModal } from './DisburseConfirmModal.js';
+export { default as EmployeeModal } from './EmployeeModal.js';
 export { default as EmployeeTable } from './EmployeeTable.js';
 export { ErrorBoundary } from './ErrorBoundary.js';
 export { default as ErrorModal } from './ErrorModal.js';
@@ -9,11 +10,13 @@ export { default as Header } from './Header.js';
 export { default as MonthYearPicker } from './MonthYearPicker.js';
 export { default as Pagination } from './Pagination.js';
 export { default as PayslipModal } from './PayslipModal.js';
+export { default as ProtectedRoute } from './ProtectedRoute.js';
 export { default as SalaryEditModal } from './SalaryEditModal.js';
 export { default as SettlementView } from './SettlementView.js';
 
 export * from './DepartmentPills.js';
 export * from './DisburseConfirmModal.js';
+export * from './EmployeeModal.js';
 export * from './EmployeeTable.js';
 export * from './ErrorBoundary.js';
 export * from './ErrorModal.js';
@@ -23,5 +26,6 @@ export * from './Header.js';
 export * from './MonthYearPicker.js';
 export * from './Pagination.js';
 export * from './PayslipModal.js';
+export * from './ProtectedRoute.js';
 export * from './SalaryEditModal.js';
 export * from './SettlementView.js';

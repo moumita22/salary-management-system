@@ -35,12 +35,20 @@ export class ApiError extends Error {
  */
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('sms_token') : null;
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const config: RequestInit = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
     ...options,
+    headers,
   };
 
   let response: Response;
@@ -58,6 +66,11 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   if (!response.ok) {
     const status = data.statusCode || response.status;
+    if (status === 401 && !endpoint.includes('/auth/login') && typeof window !== 'undefined') {
+      localStorage.removeItem('sms_token');
+      localStorage.removeItem('sms_username');
+    }
+
     const errorMsg = data.error || data.message || `Request failed with status ${status}`;
     const code = data.code || `HTTP_${status}`;
     const timestamp = data.timestamp || new Date().toISOString();
@@ -65,6 +78,37 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   }
 
   return data as T;
+}
+
+// ==========================================
+// Authentication APIs
+// ==========================================
+
+export async function loginUser(
+  username: string,
+  password: string
+): Promise<{ token: string; user: { id: number; username: string; full_name?: string; role: string } }> {
+  return request('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function registerUser(
+  username: string,
+  password: string,
+  fullName?: string
+): Promise<{ token: string; user: { id: number; username: string; full_name?: string; role: string } }> {
+  return request('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ username, password, full_name: fullName }),
+  });
+}
+
+export async function getCurrentUser(): Promise<{
+  user: { id: number; username: string; full_name?: string; role: string };
+}> {
+  return request('/auth/me');
 }
 
 // 1. Fetch all 12 departments with headcount counts
@@ -83,6 +127,7 @@ export interface GetEmployeesParams {
   limit?: number;
   month?: number;
   year?: number;
+  allEmployees?: boolean;
 }
 
 // 2. Fetch paginated employees with filters and current month salary details
@@ -96,6 +141,7 @@ export async function getEmployees({
   limit = 25,
   month = 11,
   year = 2026,
+  allEmployees = false,
 }: GetEmployeesParams = {}): Promise<PaginatedResponse<Employee>> {
   const params = new URLSearchParams({
     page: String(page),
@@ -109,6 +155,7 @@ export async function getEmployees({
   if (level) params.append('level', level);
   if (search) params.append('search', search);
   if (status) params.append('status', status);
+  if (allEmployees) params.append('allEmployees', 'true');
 
   return request<PaginatedResponse<Employee>>(`/employees?${params.toString()}`);
 }
@@ -150,7 +197,7 @@ export async function generateMonthlyPayroll({
 export async function updateEmployeeSalary(
   employeeId: number,
   payload: { month?: number; year?: number; customAdditions?: Array<{ name: string; amount: number }> }
-): Promise<any> {
+): Promise<{ success: boolean; data?: Employee; message?: string }> {
   const { month = 11, year = 2026, customAdditions = [] } = payload;
   return request(`/salaries/${employeeId}`, {
     method: 'PUT',
@@ -162,7 +209,7 @@ export async function updateEmployeeSalary(
 export async function generateSettlement(
   employeeId: number,
   { month = 11, year = 2026 }: { month?: number; year?: number } = {}
-): Promise<any> {
+): Promise<{ success: boolean; netSalary?: number; grossSalary?: number; message?: string }> {
   return request(`/salaries/settlement/${employeeId}`, {
     method: 'POST',
     body: JSON.stringify({ month, year }),
@@ -173,7 +220,7 @@ export async function generateSettlement(
 export async function disburseSettlement(
   employeeId: number,
   { month = 11, year = 2026 }: { month?: number; year?: number } = {}
-): Promise<any> {
+): Promise<{ success: boolean; message?: string }> {
   return request(`/salaries/settlement/${employeeId}/disburse`, {
     method: 'POST',
     body: JSON.stringify({ month, year }),
@@ -208,4 +255,37 @@ export async function getSalaryMetrics({
   const query = new URLSearchParams({ month: String(month), year: String(year) });
   if (departmentId) query.append('departmentId', departmentId);
   return request(`/salaries/metrics?${query.toString()}`);
+}
+
+// 9. Create a new employee
+export async function createEmployee(
+  data: Partial<Employee>
+): Promise<{ success: boolean; employee: Employee; message: string }> {
+  return request('/employees', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// 10. Update an existing employee profile
+export async function updateEmployee(
+  id: number,
+  data: Partial<Employee>
+): Promise<{ success: boolean; employee: Employee; message: string }> {
+  return request(`/employees/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+// 11. Fetch roles (optionally filtered by department)
+export async function getRoles(departmentId?: string | number): Promise<
+  Array<{ id: number; department_id: number; title: string; level: string; department_name?: string }>
+> {
+  const url = departmentId ? `/roles?departmentId=${departmentId}` : '/roles';
+  type RolesResponse =
+    | Array<{ id: number; department_id: number; title: string; level: string; department_name?: string }>
+    | { data?: Array<{ id: number; department_id: number; title: string; level: string; department_name?: string }> };
+  const res = await request<RolesResponse>(url);
+  return Array.isArray(res) ? res : res.data || [];
 }
