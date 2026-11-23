@@ -7,7 +7,31 @@ import type {
 const API_BASE = '/api';
 
 /**
- * Generic helper to handle fetch responses and errors
+ * Standardized API Error retaining HTTP status code, error code, and code-issue flags
+ */
+export class ApiError extends Error {
+  public statusCode: number;
+  public code: string;
+  public isCodeIssue: boolean;
+  public timestamp: string;
+
+  constructor(
+    message: string,
+    statusCode: number = 500,
+    code: string = 'ServerError',
+    timestamp: string = new Date().toISOString()
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    this.statusCode = statusCode;
+    this.code = code;
+    this.timestamp = timestamp;
+    this.isCodeIssue = statusCode >= 500 || statusCode === 0 || code === 'ServerError' || code === 'DatabaseError';
+  }
+}
+
+/**
+ * Generic helper to handle fetch responses and typed errors
  */
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
@@ -19,13 +43,25 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...options,
   };
 
-  const response = await fetch(url, config);
+  let response: Response;
+  try {
+    response = await fetch(url, config);
+  } catch {
+    throw new ApiError(
+      'Unable to connect to the backend server. Please verify the server is running on port 5000.',
+      0,
+      'NetworkConnectionError'
+    );
+  }
+
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    const errorMsg =
-      data.error || data.message || `Request failed with status ${response.status}`;
-    throw new Error(errorMsg);
+    const status = data.statusCode || response.status;
+    const errorMsg = data.error || data.message || `Request failed with status ${status}`;
+    const code = data.code || `HTTP_${status}`;
+    const timestamp = data.timestamp || new Date().toISOString();
+    throw new ApiError(errorMsg, status, code, timestamp);
   }
 
   return data as T;
@@ -113,12 +149,12 @@ export async function generateMonthlyPayroll({
 // 5. Update / Override an employee's monthly salary components
 export async function updateEmployeeSalary(
   employeeId: number,
-  payload: { month?: number; year?: number; overrides?: any; customAdditions?: any[] }
+  payload: { month?: number; year?: number; customAdditions?: Array<{ name: string; amount: number }> }
 ): Promise<any> {
-  const { month = 11, year = 2026, overrides, customAdditions = [] } = payload;
+  const { month = 11, year = 2026, customAdditions = [] } = payload;
   return request(`/salaries/${employeeId}`, {
     method: 'PUT',
-    body: JSON.stringify({ month, year, overrides, customAdditions }),
+    body: JSON.stringify({ month, year, customAdditions }),
   });
 }
 
@@ -128,6 +164,17 @@ export async function generateSettlement(
   { month = 11, year = 2026 }: { month?: number; year?: number } = {}
 ): Promise<any> {
   return request(`/salaries/settlement/${employeeId}`, {
+    method: 'POST',
+    body: JSON.stringify({ month, year }),
+  });
+}
+
+// 6b. Disburse and lock individual settlement for an exiting employee
+export async function disburseSettlement(
+  employeeId: number,
+  { month = 11, year = 2026 }: { month?: number; year?: number } = {}
+): Promise<any> {
+  return request(`/salaries/settlement/${employeeId}/disburse`, {
     method: 'POST',
     body: JSON.stringify({ month, year }),
   });
@@ -144,17 +191,21 @@ export async function disbursePayroll({
   });
 }
 
-// 8. Fetch salary cycle metrics & status (DRAFT / PAID / EMPTY)
+// 8. Fetch salary cycle metrics & status (DRAFT / PAID / PARTIAL / MIXED / EMPTY)
 export async function getSalaryMetrics({
   month = 11,
   year = 2026,
-}: { month?: number; year?: number } = {}): Promise<{
+  departmentId,
+}: { month?: number; year?: number; departmentId?: string } = {}): Promise<{
+  total_eligible: number;
   total_records: number;
   draft_count: number;
   paid_count: number;
   total_gross: number;
   total_net: number;
-  status: 'DRAFT' | 'PAID' | 'MIXED' | 'EMPTY';
+  status: 'DRAFT' | 'PAID' | 'PARTIAL' | 'MIXED' | 'EMPTY';
 }> {
-  return request(`/salaries/metrics?month=${month}&year=${year}`);
+  const query = new URLSearchParams({ month: String(month), year: String(year) });
+  if (departmentId) query.append('departmentId', departmentId);
+  return request(`/salaries/metrics?${query.toString()}`);
 }

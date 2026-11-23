@@ -1,21 +1,16 @@
 import React from 'react';
-import { DollarSign, Lock, Play, UserMinus, Users } from 'lucide-react';
+import { DollarSign, Lock, UserMinus, Users } from 'lucide-react';
 import MonthYearPicker from './MonthYearPicker.js';
-import type { SalaryStatus } from '../types/index.js';
+import type { SalaryStatus, CycleMetrics } from '../types/index.js';
 
 export interface HeaderProps {
   activeView: 'directory' | 'exits';
   setActiveView: (view: 'directory' | 'exits') => void;
   payoutPeriod?: { month: number; year: number };
   onPeriodChange?: (val: { month: number; year: number }) => void;
-  onGeneratePayroll: () => void;
-  onDisbursePayroll: () => void;
-  isGenerating: boolean;
-  isDisbursing: boolean;
   payrollStatus: SalaryStatus | string;
+  cycleMetrics?: CycleMetrics | null;
   exitsCount?: number;
-  filteredCount?: number;
-  isFiltered?: boolean;
 }
 
 export default function Header({
@@ -23,14 +18,9 @@ export default function Header({
   setActiveView,
   payoutPeriod,
   onPeriodChange,
-  onGeneratePayroll,
-  onDisbursePayroll,
-  isGenerating,
-  isDisbursing,
   payrollStatus,
+  cycleMetrics = null,
   exitsCount = 0,
-  filteredCount = 0,
-  isFiltered = false,
 }: HeaderProps): React.JSX.Element {
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
@@ -54,8 +44,8 @@ export default function Header({
 
           {/* Active Period & View Switcher */}
           <div className="flex items-center space-x-3">
-            {/* Cycle Selector (Month/Year Calendar Picker) */}
-            <div className="hidden md:flex items-center space-x-2">
+            {/* Unified Payroll Cycle Selector & Status Hub */}
+            <div className="flex items-center space-x-2 bg-slate-50 p-1 rounded-xl border border-slate-200">
               {onPeriodChange && payoutPeriod && (
                 <MonthYearPicker
                   value={payoutPeriod}
@@ -64,15 +54,19 @@ export default function Header({
                 />
               )}
               {payrollStatus === 'PAID' ? (
-                <span className="inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                   <Lock className="w-3 h-3 mr-1" /> Paid & Locked
                 </span>
+              ) : payrollStatus === 'PARTIAL' ? (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                  Partial ({cycleMetrics ? `${cycleMetrics.paid_count.toLocaleString()}/${cycleMetrics.total_eligible.toLocaleString()}` : ''} Paid)
+                </span>
               ) : payrollStatus === 'EMPTY' ? (
-                <span className="inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-200 text-slate-600 border border-slate-300">
                   Uncalculated
                 </span>
               ) : (
-                <span className="inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
                   Draft Mode
                 </span>
               )}
@@ -110,45 +104,6 @@ export default function Header({
                 )}
               </button>
             </div>
-          </div>
-
-          {/* Action Toolbar */}
-          <div className="flex items-center space-x-2">
-            <button
-              type="button"
-              disabled={isGenerating || payrollStatus === 'PAID'}
-              onClick={onGeneratePayroll}
-              className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all shadow-xs ${
-                payrollStatus === 'PAID'
-                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                  : 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer active:scale-98'
-              }`}
-            >
-              <Play className="w-4 h-4 fill-current" />
-              <span>
-                {isGenerating
-                  ? 'Generating...'
-                  : isFiltered && filteredCount > 0
-                  ? `⚡ Generate Payroll (${filteredCount.toLocaleString()})`
-                  : '⚡ Generate Monthly Payroll'}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              disabled={isDisbursing || payrollStatus === 'PAID'}
-              onClick={onDisbursePayroll}
-              className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all border shadow-xs ${
-                payrollStatus === 'PAID'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 cursor-default'
-                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 cursor-pointer active:scale-98'
-              }`}
-            >
-              <Lock className="w-4 h-4" />
-              <span>
-                {isDisbursing ? 'Locking...' : payrollStatus === 'PAID' ? '🔒 Payday Locked' : 'Simulate Payday'}
-              </span>
-            </button>
           </div>
         </div>
       </div>

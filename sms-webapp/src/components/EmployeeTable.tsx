@@ -1,6 +1,7 @@
 import React from 'react';
 import { FileText, Edit3, Lock, AlertCircle } from 'lucide-react';
-import type { Employee, SeniorityLevel } from '../types/index.js';
+import type { Employee } from '../types/index.js';
+import { formatUsd, getLevelBadgeClass, getCountryBadge } from '../utils/index.js';
 
 export interface EmployeeTableProps {
   employees: Employee[];
@@ -15,39 +16,6 @@ export default function EmployeeTable({
   onViewPayslip,
   onEditSalary,
 }: EmployeeTableProps): React.JSX.Element {
-  const formatUsd = (val?: number | string | null): string => {
-    if (val === null || val === undefined || val === '') return '—';
-    const num = Number(val) || 0;
-    return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
-
-  const getLevelBadgeClass = (level?: SeniorityLevel): string => {
-    switch (level) {
-      case 'SENIOR':
-        return 'bg-purple-50 text-purple-700 border-purple-200';
-      case 'MID_LEVEL':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-      default:
-        return 'bg-slate-100 text-slate-700 border-slate-200';
-    }
-  };
-
-  const getCountryBadge = (code: string): string => {
-    switch (code) {
-      case 'IN':
-        return '🇮🇳 IN';
-      case 'US':
-        return '🇺🇸 US';
-      case 'DE':
-        return '🇩🇪 DE';
-      case 'GB':
-        return '🇬🇧 GB';
-      case 'SG':
-        return '🇸🇬 SG';
-      default:
-        return code;
-    }
-  };
 
   if (loading) {
     return (
@@ -82,6 +50,7 @@ export default function EmployeeTable({
               <th className="py-3.5 px-3 text-right">Base</th>
               <th className="py-3.5 px-3 text-right">Allowance</th>
               <th className="py-3.5 px-3 text-right">Bonus</th>
+              <th className="py-3.5 px-3 text-right">Added Bonus</th>
               <th className="py-3.5 px-3 text-right">Gross</th>
               <th className="py-3.5 px-3 text-right">Retirals</th>
               <th className="py-3.5 px-3 text-right">Total Deduction</th>
@@ -143,6 +112,15 @@ export default function EmployeeTable({
                   {/* Bonus */}
                   <td className="py-3 px-3 text-right font-mono text-slate-700 whitespace-nowrap">
                     {formatUsd(emp.bonus)}
+                  </td>
+
+                  {/* Added Bonus */}
+                  <td className="py-3 px-3 text-right font-mono text-slate-700 whitespace-nowrap">
+                    {Number(emp.added_bonus) > 0 ? (
+                      <span className="font-semibold text-blue-600">+{formatUsd(emp.added_bonus)}</span>
+                    ) : (
+                      '—'
+                    )}
                   </td>
 
                   {/* Monthly Gross */}

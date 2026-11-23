@@ -3,10 +3,11 @@ import {
   calculateProratedInCents,
   calculateProratedForDaysWorkedInCents,
   recalculateOverrideInCents,
+  getDaysInMonth,
   RulePercentages,
   CalculatedFinancials,
-} from '../utils/currency.js';
-import type { CalculationSnapshot } from '../types/index.js';
+} from '../utils/index.js';
+import { AppError, type CalculationSnapshot, type SeniorityLevel } from '../types/index.js';
 
 export class SalaryCalculatorService {
   /**
@@ -22,19 +23,19 @@ export class SalaryCalculatorService {
 
     // Strict 2-decimal sum check
     if (Math.abs(total - 100.0) > 0.001) {
-      const err: any = new Error(
-        `Invalid Policy Rule: Base (${rule.base_percentage}%) + Allowance (${rule.allowance_percentage}%) + Bonus (${rule.bonus_percentage}%) + Retirals (${rule.employer_retirals_percentage}%) sums to ${total.toFixed(2)}%, but must equal exactly 100.00%.`
+      throw new AppError(
+        `Invalid Policy Rule: Base (${rule.base_percentage}%) + Allowance (${rule.allowance_percentage}%) + Bonus (${rule.bonus_percentage}%) + Retirals (${rule.employer_retirals_percentage}%) sums to ${total.toFixed(2)}%, but must equal exactly 100.00%.`,
+        400,
+        'InvalidRuleError'
       );
-      err.statusCode = 400;
-      throw err;
     }
 
     if (rule.deduction_percentage < 0 || rule.deduction_percentage > 50) {
-      const err: any = new Error(
-        `Invalid Deduction Percentage: ${rule.deduction_percentage}% must be between 0% and 50%.`
+      throw new AppError(
+        `Invalid Deduction Percentage: ${rule.deduction_percentage}% must be between 0% and 50%.`,
+        400,
+        'InvalidDeductionError'
       );
-      err.statusCode = 400;
-      throw err;
     }
   }
 
@@ -57,7 +58,7 @@ export class SalaryCalculatorService {
     rule: RulePercentages,
     month: number,
     year: number,
-    lastWorkingDay?: string | null
+    lastWorkingDay?: string | Date | null
   ) {
     this.validateRulePercentages(rule);
     return calculateProratedInCents(annualCtc, rule, month, year, lastWorkingDay);
@@ -74,7 +75,7 @@ export class SalaryCalculatorService {
     dateOfJoining: string | Date
   ) {
     this.validateRulePercentages(rule);
-    const totalDaysInMonth = new Date(year, month, 0).getDate();
+    const totalDaysInMonth = getDaysInMonth(month, year);
     const joinDate = new Date(dateOfJoining);
     const joinDay = joinDate.getDate();
     const daysWorked = Math.max(1, totalDaysInMonth - joinDay + 1);
@@ -89,7 +90,7 @@ export class SalaryCalculatorService {
     rule: RulePercentages,
     employeeMeta: {
       role_title: string;
-      role_level: any;
+      role_level: SeniorityLevel;
       country_code: string;
       department_name: string;
     },

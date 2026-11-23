@@ -3,6 +3,8 @@
  * Eliminates IEEE-754 floating point precision errors ($0.1 + 0.2 = 0.30000000000000004).
  */
 
+import { getDaysInMonth } from './dates.js';
+
 export interface RulePercentages {
   base_percentage: number;
   allowance_percentage: number;
@@ -171,22 +173,28 @@ export function calculateProratedInCents(
   rules: RulePercentages,
   month: number,
   year: number,
-  lastWorkingDayStr?: string | null
+  lastWorkingDayStr?: string | Date | null
 ): CalculatedFinancials & {
   is_prorated: boolean;
   total_working_days: number;
   actual_days_worked: number;
 } {
   // Dynamically calculate actual days in the target month (Loophole 5 fix)
-  const totalDaysInMonth = new Date(year, month, 0).getDate();
+  const totalDaysInMonth = getDaysInMonth(month, year);
 
-  // Parse exit day from LWD (e.g. '2026-11-20' -> 20)
+  // Parse exit day from LWD (can be Date object or ISO string like '2026-11-20')
   let daysWorked = totalDaysInMonth;
   if (lastWorkingDayStr) {
-    const parts = lastWorkingDayStr.split('-');
-    const parsedDay = parseInt(parts[2], 10);
-    if (!isNaN(parsedDay) && parsedDay >= 1 && parsedDay <= totalDaysInMonth) {
-      daysWorked = parsedDay;
+    const dateStr =
+      lastWorkingDayStr instanceof Date
+        ? lastWorkingDayStr.toISOString().split('T')[0]
+        : String(lastWorkingDayStr).split('T')[0];
+    const parts = dateStr.split('-');
+    if (parts.length >= 3) {
+      const parsedDay = parseInt(parts[2], 10);
+      if (!isNaN(parsedDay) && parsedDay >= 1 && parsedDay <= totalDaysInMonth) {
+        daysWorked = parsedDay;
+      }
     }
   }
 
@@ -206,15 +214,17 @@ export function recalculateOverrideInCents(
   base_salary: number;
   allowance: number;
   bonus: number;
+  added_bonus: number;
   gross_salary: number;
   tax_deduction: number;
   net_salary: number;
 } {
   const baseCents = toCents(baseSalary);
   const allowanceCents = toCents(allowance);
-  const bonusCents = toCents(bonus) + toCents(customAdditionsTotal);
+  const bonusCents = toCents(bonus);
+  const addedBonusCents = toCents(customAdditionsTotal);
 
-  const grossCents = baseCents + allowanceCents + bonusCents;
+  const grossCents = baseCents + allowanceCents + bonusCents + addedBonusCents;
   const taxCents = Math.round((grossCents * deductionPct) / 100);
   const netCents = grossCents - taxCents;
 
@@ -222,6 +232,7 @@ export function recalculateOverrideInCents(
     base_salary: toDollars(baseCents),
     allowance: toDollars(allowanceCents),
     bonus: toDollars(bonusCents),
+    added_bonus: toDollars(addedBonusCents),
     gross_salary: toDollars(grossCents),
     tax_deduction: toDollars(taxCents),
     net_salary: toDollars(netCents),

@@ -1,5 +1,16 @@
 export type SeniorityLevel = 'JUNIOR' | 'MID_LEVEL' | 'SENIOR';
-export type SalaryStatus = 'DRAFT' | 'PAID';
+export type SalaryStatus = 'DRAFT' | 'PAID' | 'PARTIAL' | 'MIXED' | 'EMPTY';
+
+export interface CycleMetrics {
+  total_eligible: number;
+  total_records: number;
+  draft_count: number;
+  paid_count: number;
+  total_gross: number;
+  total_net: number;
+  status: SalaryStatus;
+  bonus_recipients?: Array<{ employee_id: string; added_bonus: number }>;
+}
 
 export interface Department {
   id: number;
@@ -26,25 +37,10 @@ export interface CalculationSnapshot {
   actual_days_worked?: number;
   generated_at: string;
   notes?: string;
-}
-
-export interface SalaryBreakdown {
-  id?: number;
-  employee_id: number;
-  payout_month: number;
-  payout_year: number;
-  base_salary: number;
-  allowance: number;
-  bonus: number;
-  employer_retirals: number;
-  gross_salary: number;
-  tax_deduction: number;
-  net_salary: number;
-  calculation_snapshot?: CalculationSnapshot;
-  status: SalaryStatus;
-  paid_at?: string | null;
-  created_at?: string;
-  updated_at?: string;
+  overrides_applied?: {
+    modified_at: string;
+    customAdditions: Array<{ name: string; amount: number }>;
+  };
 }
 
 export interface Employee {
@@ -67,6 +63,7 @@ export interface Employee {
   base_salary?: number;
   allowance?: number;
   bonus?: number;
+  added_bonus?: number;
   employer_retirals?: number;
   gross_salary?: number;
   tax_deduction?: number;

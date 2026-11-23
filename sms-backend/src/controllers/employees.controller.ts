@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { employeeService } from '../services/employee.service.js';
+import { formatErrorResponse } from '../types/index.js';
 
 export const getEmployees = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -33,7 +34,8 @@ export const getEmployees = async (req: Request, res: Response): Promise<void> =
 
     res.json(result);
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Failed to fetch employees' });
+    const { status, body } = formatErrorResponse(error, 500, 'EmployeeFetchError');
+    res.status(status).json(body);
   }
 };
 
@@ -44,7 +46,8 @@ export const getExitingEmployees = async (req: Request, res: Response): Promise<
     const exits = await employeeService.getExitingEmployees(month, year);
     res.json(exits);
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Failed to fetch exiting employees' });
+    const { status, body } = formatErrorResponse(error, 500, 'ExitFetchError');
+    res.status(status).json(body);
   }
 };
 
@@ -52,11 +55,36 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
   try {
     const emp = await employeeService.getEmployeeById(Number(req.params.id));
     if (!emp) {
-      res.status(404).json({ error: `Employee ${req.params.id} not found` });
+      const { status, body } = formatErrorResponse(
+        new Error(`Employee ${req.params.id} not found`),
+        404,
+        'EmployeeNotFoundError'
+      );
+      res.status(status).json(body);
       return;
     }
     res.json(emp);
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Failed to fetch employee' });
+    const { status, body } = formatErrorResponse(error, 500, 'EmployeeFetchError');
+    res.status(status).json(body);
+  }
+};
+
+export const getEmployeeByCode = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const emp = await employeeService.getEmployeeByCode(req.params.code);
+    if (!emp) {
+      const { status, body } = formatErrorResponse(
+        new Error(`Employee code '${req.params.code}' not found`),
+        404,
+        'EmployeeNotFoundError'
+      );
+      res.status(status).json(body);
+      return;
+    }
+    res.json(emp);
+  } catch (error: any) {
+    const { status, body } = formatErrorResponse(error, 500, 'EmployeeFetchError');
+    res.status(status).json(body);
   }
 };

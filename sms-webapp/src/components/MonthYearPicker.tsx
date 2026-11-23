@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { MONTHS_SHORT, MONTHS_LONG } from '../utils/index.js';
 
 export interface MonthYearValue {
   month: number; // 1-12
@@ -13,16 +14,6 @@ export interface MonthYearPickerProps {
   variant?: 'toolbar' | 'header';
 }
 
-const MONTHS_SHORT = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
-
-const MONTHS_LONG = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
 export default function MonthYearPicker({
   value,
   onChange,
@@ -33,10 +24,12 @@ export default function MonthYearPicker({
   const [navYear, setNavYear] = useState<number>(value.year);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Sync internal navigation year whenever the value changes
-  useEffect(() => {
-    setNavYear(value.year);
-  }, [value.year]);
+  const handleToggle = () => {
+    if (!isOpen) {
+      setNavYear(value.year);
+    }
+    setIsOpen((prev) => !prev);
+  };
 
   // Close popup when clicking outside
   useEffect(() => {
@@ -65,7 +58,7 @@ export default function MonthYearPicker({
       {/* Trigger Button */}
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         className={
           variant === 'header'
             ? 'flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-slate-800 text-xs font-semibold cursor-pointer transition-all active:scale-95 shadow-xs'

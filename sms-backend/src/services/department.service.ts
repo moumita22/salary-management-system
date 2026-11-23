@@ -7,7 +7,15 @@ export class DepartmentService {
   }
 
   async getById(id: number | string): Promise<Department | null> {
-    return departmentModel.findById(id);
+    return departmentModel.findByIdOrCode(id);
+  }
+
+  async getByCode(code: string): Promise<Department | null> {
+    return departmentModel.findByCode(code);
+  }
+
+  async getByName(name: string): Promise<Department | null> {
+    return departmentModel.findByName(name);
   }
 
   async create(data: { department_id: string; name: string }): Promise<Department> {

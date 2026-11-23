@@ -1,8 +1,9 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import apiRouter from './routes/index.js';
 import { query } from './config/db.js';
+import { notFoundHandler, errorHandler } from './middleware/index.js';
 
 dotenv.config();
 
@@ -32,29 +33,21 @@ app.get('/health', async (_req: Request, res: Response) => {
       timestamp: dbRes.rows[0].now,
       version: '1.0.0',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Database connection failed';
     res.status(500).json({
       status: 'unhealthy',
       database: 'disconnected',
-      error: error.message,
+      error: message,
     });
   }
 });
 
 // Global 404 handler
-app.use((_req: Request, res: Response) => {
-  res.status(404).json({ error: 'Endpoint not found' });
-});
+app.use(notFoundHandler);
 
 // Global Error Handler
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  const status = err.statusCode || 500;
-  console.error(`[Error] ${err.name || 'ServerError'}:`, err.message);
-  res.status(status).json({
-    error: err.message || 'Internal server error',
-    code: err.name || 'ServerError',
-  });
-});
+app.use(errorHandler);
 
 // Start Server
 app.listen(PORT, () => {
