@@ -1,0 +1,16 @@
+meta {
+  name: Get Exiting Employees for Cycle
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/employees/exits?month=11&year=2026
+  body: none
+  auth: none
+}
+
+params:query {
+  month: 11
+  year: 2026
+}

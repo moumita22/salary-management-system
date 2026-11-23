@@ -1,0 +1,74 @@
+meta {
+  name: Update Policy Rule (Enforces 100% Rule)
+  type: http
+  seq: 2
+}
+
+patch {
+  url: {{baseUrl}}/rules/1
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "base_percentage": 52.00,
+    "allowance_percentage": 25.00,
+    "bonus_percentage": 13.00,
+    "employer_retirals_percentage": 10.00,
+    "deduction_percentage": 12.00
+  }
+}
+
+example {
+  name: example
+  
+  request: {
+    url: {{baseUrl}}/rules/1
+    method: PATCH
+    mode: json
+    body:json: {
+      {
+        "base_percentage": 52.00,
+        "allowance_percentage": 25.00,
+        "bonus_percentage": 13.00,
+        "employer_retirals_percentage": 10.00,
+        "deduction_percentage": 12.00
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      x-powered-by: Express
+      access-control-allow-origin: *
+      content-type: application/json; charset=utf-8
+      content-length: 194
+      etag: W/"c2-ymxg2NCSgBXnKglCGE/To72am2Q"
+      date: Sun, 22 Nov 2026 16:37:55 GMT
+      connection: keep-alive
+      keep-alive: timeout=5
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": 1,
+          "role_id": 1,
+          "country_code": "IN",
+          "base_percentage": "52.00",
+          "allowance_percentage": "25.00",
+          "bonus_percentage": "13.00",
+          "employer_retirals_percentage": "10.00",
+          "deduction_percentage": "12.00"
+        }
+      '''
+    }
+  }
+}

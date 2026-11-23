@@ -1,0 +1,75 @@
+meta {
+  name: Get Roles By Department
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/roles?departmentId=10
+  body: none
+  auth: none
+}
+
+params:query {
+  departmentId: 10
+}
+
+example {
+  name: example
+  
+  request: {
+    url: {{baseUrl}}/roles?departmentId=10
+    method: GET
+    mode: none
+    params:query: {
+      departmentId: 10
+    }
+  }
+  
+  response: {
+    headers: {
+      x-powered-by: Express
+      access-control-allow-origin: *
+      content-type: application/json; charset=utf-8
+      content-length: 336
+      etag: W/"150-79HtwOomk/4Wb+kMBRDULOsXoCw"
+      date: Sun, 22 Nov 2026 16:34:46 GMT
+      connection: keep-alive
+      keep-alive: timeout=5
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        [
+          {
+            "id": 28,
+            "department_id": 10,
+            "title": "HR Coordinator",
+            "level": "JUNIOR",
+            "department_name": "Human Resources"
+          },
+          {
+            "id": 29,
+            "department_id": 10,
+            "title": "HR Generalist",
+            "level": "MID_LEVEL",
+            "department_name": "Human Resources"
+          },
+          {
+            "id": 30,
+            "department_id": 10,
+            "title": "Senior HR Business Partner",
+            "level": "SENIOR",
+            "department_name": "Human Resources"
+          }
+        ]
+      '''
+    }
+  }
+}

@@ -1,0 +1,60 @@
+meta {
+  name: Get Employee By ID
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/employees/10000
+  body: none
+  auth: none
+}
+
+example {
+  name: example
+  
+  request: {
+    url: {{baseUrl}}/employees/10000
+    method: GET
+    mode: none
+  }
+  
+  response: {
+    headers: {
+      x-powered-by: Express
+      access-control-allow-origin: *
+      content-type: application/json; charset=utf-8
+      content-length: 347
+      etag: W/"15b-QLsQrNgyDNn8SApI1RrkLRMgd0M"
+      date: Sun, 22 Nov 2026 16:48:19 GMT
+      connection: keep-alive
+      keep-alive: timeout=5
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": 10000,
+          "employee_id": "EMP-10000",
+          "first_name": "Lavinia",
+          "last_name": "Legros",
+          "email": "lavinia.legros.10000@acme.org",
+          "role_id": 35,
+          "country_code": "SG",
+          "annual_ctc": "105019.00",
+          "status": "ACTIVE",
+          "date_of_joining": "2025-05-15T18:30:00.000Z",
+          "last_working_day": null,
+          "created_at": "2026-11-21T19:47:04.682Z",
+          "updated_at": "2026-11-21T19:47:04.682Z"
+        }
+      '''
+    }
+  }
+}
