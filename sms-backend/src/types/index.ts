@@ -293,6 +293,32 @@ export interface ServiceHooks<T = any> {
 }
 
 // ==========================================
+// Authentication & User Interfaces
+// ==========================================
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  password_hash: string;
+  full_name: string;
+  role: 'ADMIN';
+  created_at?: string;
+}
+
+export interface AuthSessionUser {
+  id: number;
+  username: string;
+  full_name: string;
+  role: 'ADMIN';
+}
+
+export interface LoginResponse {
+  success: true;
+  token: string;
+  user: AuthSessionUser;
+}
+
+// ==========================================
 // Application Errors
 // ==========================================
 

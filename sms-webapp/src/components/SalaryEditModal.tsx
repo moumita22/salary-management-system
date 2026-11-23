@@ -6,7 +6,10 @@ import { formatUsd } from '../utils/index.js';
 export interface SalaryEditModalProps {
   employee: Employee | null;
   onClose: () => void;
-  onSave: (employeeId: number, payload: any) => void;
+  onSave: (
+    employeeId: number,
+    payload: { customAdditions: Array<{ name: string; amount: number }> }
+  ) => void;
   isSaving?: boolean;
 }
 
@@ -25,11 +28,8 @@ export default function SalaryEditModal({
   const bonus = Number(employee.bonus) || 0;
 
   // Retrieve deduction percentage from snapshot or default 12%
-  const snapshot: any = employee.calculation_snapshot || {};
-  const deductionPct =
-    snapshot.applied_rule?.percentages?.deduction_percentage ||
-    snapshot.deduction_percentage ||
-    12;
+  const snapshot = employee.calculation_snapshot;
+  const deductionPct = snapshot?.deduction_percentage || 12;
 
   // Live recalculations
   const contractualSubtotal = baseSalary + allowance + bonus;

@@ -93,3 +93,15 @@ CREATE INDEX IF NOT EXISTS idx_sal_emp_id ON employee_salary_details(employee_id
 CREATE INDEX IF NOT EXISTS idx_sal_period ON employee_salary_details(payout_year, payout_month);
 CREATE INDEX IF NOT EXISTS idx_sal_status ON employee_salary_details(status);
 CREATE INDEX IF NOT EXISTS idx_sal_net ON employee_salary_details(net_salary);
+
+-- 6. Admin Users Table (Authentication & Access Control)
+CREATE TABLE IF NOT EXISTS admin_users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name VARCHAR(100),
+    role VARCHAR(30) NOT NULL DEFAULT 'ADMIN',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_users_username ON admin_users(username);

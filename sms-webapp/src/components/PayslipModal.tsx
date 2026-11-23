@@ -12,24 +12,23 @@ export interface PayslipModalProps {
 export default function PayslipModal({ employee, payoutPeriod, onClose }: PayslipModalProps): React.JSX.Element | null {
   if (!employee) return null;
 
-  const snapshot: any = employee.calculation_snapshot || {};
-  const percentages = snapshot.applied_rule?.percentages || snapshot || {};
+  const snapshot = employee.calculation_snapshot;
   const isPaid = employee.salary_status === 'PAID';
 
   const payPeriodText = payoutPeriod
     ? formatPayPeriod(payoutPeriod.month, payoutPeriod.year)
     : 'November 2026';
 
-  const isProrated = Boolean(snapshot.is_prorated || employee.last_working_day);
+  const isProrated = Boolean(snapshot?.is_prorated || employee.last_working_day);
   const lwdInfo = employee.last_working_day ? parseDate(employee.last_working_day) : null;
-  const actualDays = snapshot.actual_days_worked || lwdInfo?.day || 15;
-  const totalDays = snapshot.total_working_days || 30;
+  const actualDays = snapshot?.actual_days_worked || lwdInfo?.day || 15;
+  const totalDays = snapshot?.total_working_days || 30;
 
-  const basePct = percentages.base_percentage || 50;
-  const allowancePct = percentages.allowance_percentage || 25;
-  const bonusPct = percentages.bonus_percentage || 15;
-  const retiralsPct = percentages.employer_retirals_percentage || 10;
-  const deductionPct = percentages.deduction_percentage || 12;
+  const basePct = snapshot?.base_percentage || 50;
+  const allowancePct = snapshot?.allowance_percentage || 25;
+  const bonusPct = snapshot?.bonus_percentage || 15;
+  const retiralsPct = snapshot?.employer_retirals_percentage || 10;
+  const deductionPct = snapshot?.deduction_percentage || 12;
 
   // Safe denominator preventing division by zero
   const contractualPctSum = (basePct + allowancePct + bonusPct) || 100;
