@@ -6,7 +6,7 @@ export const getDepartments = async (req: Request, res: Response): Promise<void>
   try {
     const departments = await departmentService.getAllWithHeadcount();
     res.json(departments);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { status, body } = formatErrorResponse(error, 500, 'DepartmentFetchError');
     res.status(status).json(body);
   }
@@ -25,7 +25,7 @@ export const getDepartmentById = async (req: Request, res: Response): Promise<vo
       return;
     }
     res.json(dept);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { status, body } = formatErrorResponse(error, 500, 'DepartmentFetchError');
     res.status(status).json(body);
   }

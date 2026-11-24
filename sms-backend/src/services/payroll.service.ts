@@ -142,7 +142,7 @@ export class PayrollService {
        WHERE payout_month = $1 AND payout_year = $2 AND status = 'DRAFT' AND added_bonus > 0`,
       [month, year]
     );
-    const preservedBonusMap = new Map<number, { added_bonus: number; overrides: any }>();
+    const preservedBonusMap = new Map<number, { added_bonus: number; overrides: unknown }>();
     for (const row of existingAdjustmentsRes.rows) {
       preservedBonusMap.set(Number(row.employee_id), {
         added_bonus: Number(row.added_bonus) || 0,
@@ -340,7 +340,9 @@ export class PayrollService {
       customTotal
     );
 
-    const updatedSnapshot: any = { ...existing.calculation_snapshot };
+    const updatedSnapshot: CalculationSnapshot & { overrides_applied?: Record<string, unknown> } = {
+      ...existing.calculation_snapshot,
+    };
     if (customAdditions.length > 0) {
       updatedSnapshot.overrides_applied = {
         modified_at: new Date().toISOString(),

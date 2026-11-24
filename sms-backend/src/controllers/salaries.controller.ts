@@ -21,7 +21,7 @@ export const generatePayroll = async (req: Request, res: Response): Promise<void
       durationMs: result.durationMs,
       message: `Generated payroll for ${result.generatedCount.toLocaleString()} employees in ${(result.durationMs / 1000).toFixed(2)}s.`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { status, body } = formatErrorResponse(error, 500, 'PayrollGenerationError');
     res.status(status).json(body);
   }
@@ -38,7 +38,7 @@ export const disbursePayroll = async (req: Request, res: Response): Promise<void
       disbursedCount: result.lockedCount,
       message: `Disbursed and locked ${result.lockedCount.toLocaleString()} employee records for ${month}/${year}.`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { status, body } = formatErrorResponse(error, 500, 'PayrollDisbursementError');
     res.status(status).json(body);
   }
@@ -56,7 +56,7 @@ export const updateSalary = async (req: Request, res: Response): Promise<void> =
       customAdditions
     );
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { status, body } = formatErrorResponse(error, 400, 'SalaryAdjustmentError');
     res.status(status).json(body);
   }
@@ -70,7 +70,7 @@ export const generateSettlement = async (req: Request, res: Response): Promise<v
 
     const settlement = await payrollService.generateSettlement(employeeId, month, year);
     res.json(settlement);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { status, body } = formatErrorResponse(error, 400, 'SettlementGenerationError');
     res.status(status).json(body);
   }
@@ -88,7 +88,7 @@ export const disburseSettlement = async (req: Request, res: Response): Promise<v
       data: result,
       message: `Settlement disbursed and locked for employee ${employeeId}.`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { status, body } = formatErrorResponse(error, 400, 'SettlementDisbursementError');
     res.status(status).json(body);
   }
@@ -102,7 +102,7 @@ export const getSalaryMetrics = async (req: Request, res: Response): Promise<voi
 
     const metrics = await employeeSalaryDetailModel.getCycleMetrics(month, year, departmentId);
     res.json(metrics);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { status, body } = formatErrorResponse(error, 500, 'SalaryMetricsError');
     res.status(status).json(body);
   }

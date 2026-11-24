@@ -35,7 +35,7 @@ export const getEmployees = async (req: Request, res: Response): Promise<void> =
     });
 
     res.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { status, body } = formatErrorResponse(error, 500, 'EmployeeFetchError');
     res.status(status).json(body);
   }
@@ -47,7 +47,7 @@ export const getExitingEmployees = async (req: Request, res: Response): Promise<
     const year = parseInt(String(req.query.year || '2026'), 10);
     const exits = await employeeService.getExitingEmployees(month, year);
     res.json(exits);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { status, body } = formatErrorResponse(error, 500, 'ExitFetchError');
     res.status(status).json(body);
   }
@@ -66,7 +66,7 @@ export const getEmployeeById = async (req: Request, res: Response): Promise<void
       return;
     }
     res.json(emp);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { status, body } = formatErrorResponse(error, 500, 'EmployeeFetchError');
     res.status(status).json(body);
   }
@@ -85,7 +85,7 @@ export const getEmployeeByCode = async (req: Request, res: Response): Promise<vo
       return;
     }
     res.json(emp);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { status, body } = formatErrorResponse(error, 500, 'EmployeeFetchError');
     res.status(status).json(body);
   }
