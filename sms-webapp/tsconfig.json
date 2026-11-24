@@ -12,7 +12,8 @@
     "jsx": "react-jsx",
     "strict": false,
     "allowJs": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "types": ["vitest/globals", "@testing-library/jest-dom"]
   },
   "include": ["src"]
 }

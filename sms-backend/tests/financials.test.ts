@@ -387,3 +387,209 @@ describe('Full Name Multi-field Search Support', () => {
     expect(matched?.employee_id).toBe('EMP-01027');
   });
 });
+
+describe('Bearer Token Authentication & User Verification', () => {
+  it('should authenticate admin user and issue valid Bearer token', async () => {
+    const { authService } = await import('../src/services/auth.service.js');
+    const result = await authService.login('admin', 'adminpassword');
+
+    expect(result.token).toBeDefined();
+    expect(result.token.split('.').length).toBe(3);
+    expect(result.user.username).toBe('admin');
+    expect(result.user.role).toBe('ADMIN');
+
+    const decoded = authService.verifyToken(result.token);
+    expect(decoded.username).toBe('admin');
+    expect(decoded.role).toBe('ADMIN');
+  });
+
+  it('should reject invalid password with 401 InvalidCredentialsError', async () => {
+    const { authService } = await import('../src/services/auth.service.js');
+    await expect(authService.login('admin', 'wrongpassword')).rejects.toThrow(
+      /Invalid username or password/
+    );
+  });
+
+  it('should register a new administrator user and issue Bearer token', async () => {
+    const { authService } = await import('../src/services/auth.service.js');
+    const newUsername = `admin_test_${Date.now()}`;
+    const result = await authService.register({
+      username: newUsername,
+      password: 'prodpassword123',
+      full_name: 'Production Administrator',
+    });
+
+    expect(result.token).toBeDefined();
+    expect(result.user.username).toBe(newUsername);
+    expect(result.user.role).toBe('ADMIN');
+
+    // Should be able to log in with new credentials
+    const loginRes = await authService.login(newUsername, 'prodpassword123');
+    expect(loginRes.user.username).toBe(newUsername);
+  });
+
+  it('should reject registration when username already exists', async () => {
+    const { authService } = await import('../src/services/auth.service.js');
+    await expect(
+      authService.register({
+        username: 'admin',
+        password: 'anotherpassword',
+      })
+    ).rejects.toThrow(/Username is already taken/);
+  });
+
+  it('should safely reject tokens with malformed signatures without throwing unhandled TypeErrors', async () => {
+    const { authService } = await import('../src/services/auth.service.js');
+    // Truncated signature (different byte length)
+    expect(() => authService.verifyToken('header.payload.short')).toThrow(/Invalid token signature/);
+    // Malformed token without 3 parts
+    expect(() => authService.verifyToken('bad-token')).toThrow(/Invalid authentication token format/);
+  });
+
+  it('should reject expired Bearer tokens with 401 TokenExpiredError', async () => {
+    const { authService } = await import('../src/services/auth.service.js');
+    const crypto = await import('node:crypto');
+    const JWT_SECRET = process.env.JWT_SECRET || 'acme-sms-secret-key-production-hardened-2026';
+
+    const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+    // Set exp to 1 hour in the past
+    const exp = Math.floor(Date.now() / 1000) - 3600;
+    const payload = Buffer.from(
+      JSON.stringify({ id: 1, username: 'admin', role: 'ADMIN', exp })
+    ).toString('base64url');
+    const signature = crypto
+      .createHmac('sha256', JWT_SECRET)
+      .update(`${header}.${payload}`)
+      .digest('base64url');
+    const expiredToken = `${header}.${payload}.${signature}`;
+
+    expect(() => authService.verifyToken(expiredToken)).toThrow(/Session token has expired/);
+  });
+});
+
+describe('Employee Management Service (CRUD & Validations)', () => {
+  it('should auto-generate sequential EMP-XXXXX ID when creating employee without employee_id', async () => {
+    const { employeeService } = await import('../src/services/employee.service.js');
+    const created = await employeeService.createEmployee({
+      first_name: 'TestAutomated',
+      last_name: 'Employee',
+      email: `test.automated.${Date.now()}@acme.com`,
+      role_id: 1,
+      country_code: 'US',
+      annual_ctc: 150000,
+      status: 'ACTIVE',
+      date_of_joining: '2026-11-01',
+    });
+
+    expect(created.id).toBeDefined();
+    expect(created.employee_id).toMatch(/^EMP-\d{5}$/);
+    expect(created.first_name).toBe('TestAutomated');
+    expect(created.status).toBe('ACTIVE');
+  });
+
+  it('should validate and update existing employee profile', async () => {
+    const { employeeService } = await import('../src/services/employee.service.js');
+    const created = await employeeService.createEmployee({
+      first_name: 'UpdateTest',
+      last_name: 'Initial',
+      email: `update.test.${Date.now()}@acme.com`,
+      role_id: 1,
+      country_code: 'IN',
+      annual_ctc: 900000,
+      status: 'ACTIVE',
+      date_of_joining: '2026-11-01',
+    });
+
+    const updated = await employeeService.updateEmployee(created.id, {
+      first_name: 'UpdateTestModified',
+      annual_ctc: 1200000,
+      status: 'EXITING',
+      last_working_day: '2026-11-30',
+    });
+
+    expect(updated).toBeDefined();
+    expect(updated?.first_name).toBe('UpdateTestModified');
+    expect(Number(updated?.annual_ctc)).toBe(1200000);
+    expect(updated?.status).toBe('EXITING');
+    expect(new Date(updated!.last_working_day!).toISOString().split('T')[0]).toBe('2026-11-30');
+  });
+
+  it('should reject employee creation with zero or negative annual CTC or invalid email', async () => {
+    const { employeeService } = await import('../src/services/employee.service.js');
+    
+    // Negative or zero CTC
+    await expect(
+      employeeService.createEmployee({
+        first_name: 'Invalid',
+        last_name: 'CTC',
+        email: 'invalid.ctc@acme.com',
+        role_id: 1,
+        country_code: 'US',
+        annual_ctc: 0,
+      })
+    ).rejects.toThrow(/Annual CTC must be greater than zero/);
+
+    // Invalid email without '@'
+    await expect(
+      employeeService.createEmployee({
+        first_name: 'Invalid',
+        last_name: 'Email',
+        email: 'invalidemailformat',
+        role_id: 1,
+        country_code: 'US',
+        annual_ctc: 100000,
+      })
+    ).rejects.toThrow(/A valid email address is required/);
+  });
+
+  it('should return 404 AppError when updating a non-existent employee', async () => {
+    const { employeeService } = await import('../src/services/employee.service.js');
+    await expect(
+      employeeService.updateEmployee(99999999, { first_name: 'Ghost' })
+    ).rejects.toThrow(/Employee with ID 99999999 not found/);
+  });
+
+  it('should accurately link an updated EXITING employee to getExitingEmployees for the cycle', async () => {
+    const { employeeService } = await import('../src/services/employee.service.js');
+    const created = await employeeService.createEmployee({
+      first_name: 'Lifecycle',
+      last_name: 'ExitCheck',
+      email: `lifecycle.exit.${Date.now()}@acme.com`,
+      role_id: 1,
+      country_code: 'US',
+      annual_ctc: 120000,
+      status: 'ACTIVE',
+      date_of_joining: '2026-11-01',
+    });
+
+    // Update to EXITING on Nov 25, 2026
+    await employeeService.updateEmployee(created.id, {
+      status: 'EXITING',
+      last_working_day: '2026-11-25',
+    });
+
+    const exits = await employeeService.getExitingEmployees(11, 2026);
+    const found = exits.find((e) => e.id === created.id);
+    expect(found).toBeDefined();
+    expect(found?.status).toBe('EXITING');
+  });
+
+  it('should reject modification of a TERMINATED employee with 403 Forbidden', async () => {
+    const { employeeService } = await import('../src/services/employee.service.js');
+    const created = await employeeService.createEmployee({
+      first_name: 'Terminated',
+      last_name: 'GuardTest',
+      email: `term.guard.${Date.now()}@acme.com`,
+      role_id: 1,
+      country_code: 'US',
+      annual_ctc: 100000,
+      status: 'TERMINATED',
+      date_of_joining: '2026-01-01',
+      last_working_day: '2026-06-30',
+    });
+
+    await expect(
+      employeeService.updateEmployee(created.id, { annual_ctc: 150000 })
+    ).rejects.toThrow(/Cannot modify profile or compensation of a terminated employee/);
+  });
+});

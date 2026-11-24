@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Header,
   DepartmentPills,
@@ -139,12 +139,14 @@ export default function SalaryManagementPage(): React.JSX.Element {
   const [isDisburseModalOpen, setIsDisburseModalOpen] = useState<boolean>(false);
   const [isSavingSalary, setIsSavingSalary] = useState<boolean>(false);
 
-  // Toast / Notification State
+  // Toast / Notification State (6s duration)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
+    toastTimerRef.current = setTimeout(() => setToast(null), 6000);
   };
 
   // 1. Debounce Search Input (300ms)
@@ -283,7 +285,7 @@ export default function SalaryManagementPage(): React.JSX.Element {
       });
       setPayrollStatus('PAID');
       setIsDisburseModalOpen(false);
-      showToast(`🔒 Disbursed & locked ${res.disbursedCount?.toLocaleString() || '10,000'} employee records!`);
+      showToast(`🔒 Disbursed & locked ${(res.disbursedCount || cycleMetrics?.total_eligible || totalItems).toLocaleString()} employee records!`);
       loadEmployees();
       refreshMetrics();
       if (activeView === 'exits') loadExits();
@@ -364,9 +366,9 @@ export default function SalaryManagementPage(): React.JSX.Element {
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       {/* Toast Notification */}
       {toast && (
-        <div className="fixed bottom-5 right-5 z-50 animate-in slide-in-from-bottom duration-200">
+        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 duration-300">
           <div
-            className={`px-4 py-3 rounded-xl shadow-lg font-semibold text-xs flex items-center space-x-2 ${
+            className={`px-5 py-3.5 rounded-2xl shadow-2xl font-bold text-sm tracking-wide flex items-center space-x-3 border border-white/10 ${
               toast.type === 'error'
                 ? 'bg-rose-600 text-white'
                 : 'bg-slate-900 text-white'
@@ -495,11 +497,20 @@ export default function SalaryManagementPage(): React.JSX.Element {
         onConfirm={handleConfirmGeneratePayroll}
         isGenerating={isGenerating}
         payoutPeriod={payoutPeriod}
-        targetLabel={
-          isFiltered
-            ? `${totalItems.toLocaleString()} filtered employees`
-            : 'All Departments (10,000 employees)'
-        }
+        targetLabel={(() => {
+          const eligibleCount = cycleMetrics?.total_eligible ?? totalItems;
+          if (selectedDeptId) {
+            const selectedDept = departments.find(
+              (d) => d.department_id === selectedDeptId || String(d.id) === selectedDeptId
+            );
+            const deptName = selectedDept ? selectedDept.name : 'Department';
+            return `${deptName} (${totalItems.toLocaleString()} employees)`;
+          }
+          if (countryCode || level || debouncedSearch) {
+            return `Filtered Scope (${totalItems.toLocaleString()} employees)`;
+          }
+          return `All Departments (${eligibleCount.toLocaleString()} employees)`;
+        })()}
         bonusRecipients={cycleMetrics?.bonus_recipients || []}
       />
 

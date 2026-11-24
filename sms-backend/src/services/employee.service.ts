@@ -96,6 +96,14 @@ export class EmployeeService {
       throw new AppError(`Employee with ID ${id} not found`, 404, 'EmployeeNotFoundError');
     }
 
+    if (existing.status === 'TERMINATED') {
+      throw new AppError(
+        'Cannot modify profile or compensation of a terminated employee',
+        403,
+        'EmployeeTerminatedLockError'
+      );
+    }
+
     await employeeDetailModel.update(id, data);
     return this.getEmployeeById(id);
   }
