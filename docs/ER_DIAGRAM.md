@@ -71,8 +71,9 @@ erDiagram
         decimal base_salary "Base Salary Amount (USD)"
         decimal allowance "Allowance Amount (USD)"
         decimal bonus "Performance / Variable Bonus (USD)"
+        decimal added_bonus "Discretionary / Spot Bonus (USD)"
         decimal employer_retirals "Employer Retirals/Benefits (USD)"
-        decimal gross_salary "Base + Allowance + Bonus (USD)"
+        decimal gross_salary "Base + Allowance + Bonus + Added Bonus (USD)"
         decimal tax_deduction "Taxes and Deductions (USD)"
         decimal net_salary "Take-home pay: Gross - Tax (USD)"
         jsonb calculation_snapshot "Audit copy of exact percentages applied"
@@ -142,12 +143,13 @@ erDiagram
   * `employee_id` (`INT NOT NULL REFERENCES employee_details(id)`): Foreign key linking to the employee primary key.
   * `payout_month` (`INT NOT NULL CHECK (payout_month BETWEEN 1 AND 12)`): Pay cycle month.
   * `payout_year` (`INT NOT NULL`): Pay cycle year (e.g. 2026).
-  * `base_salary`, `allowance`, `bonus`: Monthly earnings breakdown (USD).
+  * `base_salary`, `allowance`, `bonus`: Monthly earnings breakdown governed by policy rules (USD).
+  * `added_bonus` (`NUMERIC(14, 2) NOT NULL DEFAULT 0.00`): Discretionary spot bonus or manual compensation override distinct from contractual policy bonus.
   * `employer_retirals` (`NUMERIC(14, 2) NOT NULL DEFAULT 0.00`): Employer benefits/retirals contribution.
-  * `gross_salary` (`NUMERIC(14, 2) NOT NULL`): `Base + Allowance + Bonus`.
+  * `gross_salary` (`NUMERIC(14, 2) NOT NULL`): `Base + Allowance + Bonus + Added Bonus`.
   * `tax_deduction` (`NUMERIC(14, 2) NOT NULL`): Statutory tax and deduction amount.
   * `net_salary` (`NUMERIC(14, 2) NOT NULL`): `Gross Salary - Tax Deduction` (Take-home pay).
-  * `calculation_snapshot` (`JSONB NOT NULL`): Exact audit snapshot of percentages and custom overrides applied at generation time.
+  * `calculation_snapshot` (`JSONB NOT NULL`): Exact audit snapshot of percentages, proration days, and custom overrides applied at generation time.
   * `status` (`VARCHAR(20) NOT NULL`): `'DRAFT'` (editable) or `'PAID'` (locked).
   * `paid_at` (`BIGINT NULL`): Time when month-end payment event was confirmed (Unix epoch milliseconds).
   * `created_at` (`BIGINT NOT NULL`): Row creation timestamp (Unix epoch milliseconds).
@@ -186,7 +188,8 @@ To guarantee sub-10ms queries across 10,000 records, the following B-Tree indexe
 3. `idx_emp_role_id` & `idx_emp_country`: Fast filtering by role and country.
 4. `idx_emp_name` & `idx_emp_email`: Rapid debounced searching across 10,000 employees.
 5. `idx_emp_lwd`: Fast retrieval of exiting employees for the settlements tab.
-6. `idx_sal_period` & `idx_sal_status`: Instant filtering for monthly pay cycles and locked status checks.
+6. `idx_sal_period` (`payout_year, payout_month`) & `idx_sal_status`: Instant filtering for monthly pay cycles and locked status checks.
+7. `idx_admin_users_username`: Rapid administrative authentication credential lookups.
 
 ---
 
