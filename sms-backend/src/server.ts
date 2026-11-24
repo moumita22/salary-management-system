@@ -49,12 +49,10 @@ app.use(notFoundHandler);
 // Global Error Handler
 app.use(errorHandler);
 
-// Start Server locally (in Vercel serverless, app is handled by serverless function)
-if (!process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log(`🚀 ACME SMS Backend running on http://localhost:${PORT}`);
-    console.log(`📊 Health check available at http://localhost:${PORT}/health`);
-  });
-}
+// Start Server
+app.listen(PORT, () => {
+  console.log(`🚀 ACME SMS Backend running on http://localhost:${PORT}`);
+  console.log(`📊 Health check available at http://localhost:${PORT}/health`);
+});
 
 export default app;
