@@ -17,6 +17,7 @@ const EMPLOYEE_COLUMNS = [
   'date_of_joining',
   'last_working_day',
   'created_at',
+  'updated_at',
 ];
 
 export interface EmployeeDirectoryOptions {
@@ -76,6 +77,7 @@ export class EmployeeDetailModel extends BaseModel<EmployeeDetail> {
         e.date_of_joining,
         e.last_working_day,
         e.created_at,
+        e.updated_at,
         r.title AS role_title,
         r.level AS role_level,
         d.id AS department_pk,
@@ -109,6 +111,7 @@ export class EmployeeDetailModel extends BaseModel<EmployeeDetail> {
         e.date_of_joining,
         e.last_working_day,
         e.created_at,
+        e.updated_at,
         r.title AS role_title,
         r.level AS role_level,
         d.id AS department_pk,
@@ -307,7 +310,21 @@ export class EmployeeDetailModel extends BaseModel<EmployeeDetail> {
   /**
    * Find employees resigning/exiting within a specific month and year
    */
-  async findExits(month: number = 11, year: number = 2026): Promise<DirectoryEmployee[]> {
+  async findExits(month: number = 11, year: number = 2026, status?: string): Promise<DirectoryEmployee[]> {
+    const { cycleStart, cycleEnd } = getCycleDates(month, year);
+    const params: QueryParam[] = [
+      month as QueryParam,
+      year as QueryParam,
+      cycleStart as QueryParam,
+      cycleEnd as QueryParam,
+    ];
+    let statusFilterClause = '';
+
+    if (status && status !== 'ALL') {
+      params.push(status.trim().toUpperCase() as QueryParam);
+      statusFilterClause = `AND UPPER(e.status) = $${params.length}`;
+    }
+
     const sql = `
       SELECT 
         e.id,
@@ -345,11 +362,16 @@ export class EmployeeDetailModel extends BaseModel<EmployeeDetail> {
         AND s.payout_month = $1 
         AND s.payout_year = $2
       WHERE e.last_working_day IS NOT NULL
-        AND EXTRACT(MONTH FROM e.last_working_day) = $1
-        AND EXTRACT(YEAR FROM e.last_working_day) = $2
-      ORDER BY e.last_working_day ASC
+        AND e.status IN ('EXITING', 'TERMINATED')
+        AND e.last_working_day >= $3
+        AND e.last_working_day <= $4
+        ${statusFilterClause}
+      ORDER BY 
+        CASE WHEN e.status = 'EXITING' THEN 1 ELSE 2 END ASC,
+        e.last_working_day ASC,
+        e.id ASC
     `;
-    return this.raw<DirectoryEmployee>(sql, [month as QueryParam, year as QueryParam]);
+    return this.raw<DirectoryEmployee>(sql, params);
   }
 }
 

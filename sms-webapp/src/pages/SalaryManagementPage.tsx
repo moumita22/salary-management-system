@@ -459,6 +459,7 @@ export default function SalaryManagementPage(): React.JSX.Element {
           <div className="w-full px-4 sm:px-6 lg:px-8 mt-6">
             <SettlementView
               exits={exits}
+              payoutPeriod={payoutPeriod}
               loading={loadingExits}
               onGenerateSettlement={handleGenerateSettlement}
               onDisburseSettlement={handleDisburseSettlement}

@@ -11,6 +11,7 @@ import {
   type EmployeeSalaryDetail,
   type SalaryComponentRule,
   type SeniorityLevel,
+  type CalculationSnapshot,
 } from '../types/index.js';
 import { getCycleDates, type CalculatedFinancials } from '../utils/index.js';
 
@@ -114,6 +115,19 @@ export class PayrollService {
       pIdx++;
     }
 
+    interface PayrollGenerationEmployeeRow {
+      id: number;
+      employee_id: string;
+      role_id: number;
+      country_code: string;
+      annual_ctc: number | string;
+      date_of_joining: string;
+      last_working_day?: string | null;
+      role_title: string;
+      role_level: SeniorityLevel;
+      department_name: string;
+    }
+
     const employeesSql = `
       SELECT 
         e.id, 
@@ -132,17 +146,29 @@ export class PayrollService {
       WHERE ${conditions.join(' AND ')}
       ORDER BY e.id ASC
     `;
-    const employeesRes = await query(employeesSql, values);
+    const employeesRes = await query<PayrollGenerationEmployeeRow>(employeesSql, values);
     const employees = employeesRes.rows;
 
     // 4. Query existing draft added_bonus adjustments to preserve manual spot bonuses
-    const existingAdjustmentsRes = await query(
+    interface ExistingDraftAdjustmentRow {
+      employee_id: number;
+      added_bonus: number | string;
+      calculation_snapshot: { overrides_applied?: { modified_at: string; customAdditions: Array<{ name: string; amount: number }> } } | null;
+    }
+
+    const existingAdjustmentsRes = await query<ExistingDraftAdjustmentRow>(
       `SELECT employee_id, added_bonus, calculation_snapshot
        FROM employee_salary_details
        WHERE payout_month = $1 AND payout_year = $2 AND status = 'DRAFT' AND added_bonus > 0`,
       [month, year]
     );
-    const preservedBonusMap = new Map<number, { added_bonus: number; overrides: unknown }>();
+    const preservedBonusMap = new Map<
+      number,
+      {
+        added_bonus: number;
+        overrides: { modified_at: string; customAdditions: Array<{ name: string; amount: number }> } | null;
+      }
+    >();
     for (const row of existingAdjustmentsRes.rows) {
       preservedBonusMap.set(Number(row.employee_id), {
         added_bonus: Number(row.added_bonus) || 0,
@@ -162,12 +188,12 @@ export class PayrollService {
 
       // Check if mid-month exit in this cycle
       const isExitThisMonth =
-        emp.last_working_day &&
-        new Date(emp.last_working_day).getMonth() + 1 === month &&
-        new Date(emp.last_working_day).getFullYear() === year;
+        Boolean(emp.last_working_day) &&
+        new Date(String(emp.last_working_day)).getMonth() + 1 === month &&
+        new Date(String(emp.last_working_day)).getFullYear() === year;
 
       // Check if mid-month joining in this cycle
-      const joinDate = new Date(emp.date_of_joining);
+      const joinDate = new Date(String(emp.date_of_joining));
       const isJoinThisMonth =
         joinDate.getMonth() + 1 === month &&
         joinDate.getFullYear() === year &&
@@ -179,30 +205,32 @@ export class PayrollService {
         | undefined = undefined;
 
       if (isExitThisMonth) {
-        financials = salaryCalculatorService.calculateProratedSettlement(
+        const exitFinancials = salaryCalculatorService.calculateProratedSettlement(
           Number(emp.annual_ctc),
           rule,
           month,
           year,
-          emp.last_working_day
+          String(emp.last_working_day)
         );
+        financials = exitFinancials;
         prorationMeta = {
           is_prorated: true,
-          total_working_days: financials.total_working_days,
-          actual_days_worked: financials.actual_days_worked,
+          total_working_days: exitFinancials.total_working_days,
+          actual_days_worked: exitFinancials.actual_days_worked,
         };
       } else if (isJoinThisMonth) {
-        financials = salaryCalculatorService.calculateMidMonthJoinProration(
+        const joinFinancials = salaryCalculatorService.calculateMidMonthJoinProration(
           Number(emp.annual_ctc),
           rule,
           month,
           year,
-          emp.date_of_joining
+          String(emp.date_of_joining)
         );
+        financials = joinFinancials;
         prorationMeta = {
           is_prorated: true,
-          total_working_days: financials.total_working_days,
-          actual_days_worked: financials.actual_days_worked,
+          total_working_days: joinFinancials.total_working_days,
+          actual_days_worked: joinFinancials.actual_days_worked,
         };
       } else {
         financials = salaryCalculatorService.calculateMonthlySalary(
@@ -212,7 +240,7 @@ export class PayrollService {
       }
 
       // Check if this employee has an existing manual added_bonus to preserve
-      const preserved = preservedBonusMap.get(emp.id);
+      const preserved = preservedBonusMap.get(Number(emp.id));
       const addedBonus = preserved ? preserved.added_bonus : 0;
 
       let finalGross = financials.gross_salary;
@@ -352,7 +380,7 @@ export class PayrollService {
       delete updatedSnapshot.overrides_applied;
     }
 
-    return employeeSalaryDetailModel.update(existing.id, {
+    const updated = await employeeSalaryDetailModel.update(existing.id, {
       base_salary: recalculated.base_salary,
       allowance: recalculated.allowance,
       bonus: recalculated.bonus,
@@ -361,7 +389,14 @@ export class PayrollService {
       tax_deduction: recalculated.tax_deduction,
       net_salary: recalculated.net_salary,
       calculation_snapshot: updatedSnapshot,
+      updated_at: Date.now(),
     });
+
+    if (!updated) {
+      throw new AppError('Failed to update employee salary record', 500);
+    }
+
+    return updated;
   }
 
   /**
@@ -380,7 +415,7 @@ export class PayrollService {
       // Transition any exiting employees who were disbursed to TERMINATED
       await client.query(
         `UPDATE employee_details e
-         SET status = 'TERMINATED', updated_at = NOW()
+         SET status = 'TERMINATED', updated_at = (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT
          FROM employee_salary_details s
          WHERE s.employee_id = e.id
            AND s.payout_month = $1
@@ -411,7 +446,7 @@ export class PayrollService {
     employeeId: number,
     month: number = 11,
     year: number = 2026
-  ): Promise<any> {
+  ): Promise<EmployeeSalaryDetail> {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -432,7 +467,7 @@ export class PayrollService {
 
       // Transition employee_details status from EXITING to TERMINATED
       await client.query(
-        "UPDATE employee_details SET status = 'TERMINATED', updated_at = NOW() WHERE id = $1",
+        "UPDATE employee_details SET status = 'TERMINATED', updated_at = (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT WHERE id = $1",
         [employeeId]
       );
 
@@ -523,7 +558,11 @@ export class PayrollService {
       client.release();
     }
 
-    return employeeSalaryDetailModel.findByEmployeeAndCycle(employeeId, month, year);
+    const settlementRecord = await employeeSalaryDetailModel.findByEmployeeAndCycle(employeeId, month, year);
+    if (!settlementRecord) {
+      throw new AppError(`Failed to retrieve generated settlement for employee ID ${employeeId}`, 500);
+    }
+    return settlementRecord;
   }
 }
 

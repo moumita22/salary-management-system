@@ -164,9 +164,14 @@ export async function getEmployees({
 export async function getExitingEmployees({
   month = 11,
   year = 2026,
-}: { month?: number; year?: number } = {}): Promise<Employee[]> {
+  status,
+}: { month?: number; year?: number; status?: string } = {}): Promise<Employee[]> {
+  const queryParams = new URLSearchParams({ month: String(month), year: String(year) });
+  if (status && status !== 'ALL') {
+    queryParams.set('status', status);
+  }
   const res = await request<{ data?: Employee[] } | Employee[]>(
-    `/employees/exits?month=${month}&year=${year}`
+    `/employees/exits?${queryParams.toString()}`
   );
   return Array.isArray(res) ? res : res.data || [];
 }

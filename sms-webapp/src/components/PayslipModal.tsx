@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, Printer, CheckCircle2, Sparkles, Clock } from 'lucide-react';
 import type { Employee } from '../types/index.js';
-import { formatUsd, parseDate, formatPayPeriod } from '../utils/index.js';
+import { formatUsd, parseDate, formatPayPeriod, getDaysInMonth } from '../utils/index.js';
 
 export interface PayslipModalProps {
   employee: Employee | null;
@@ -21,8 +21,9 @@ export default function PayslipModal({ employee, payoutPeriod, onClose }: Paysli
 
   const isProrated = Boolean(snapshot?.is_prorated || employee.last_working_day);
   const lwdInfo = employee.last_working_day ? parseDate(employee.last_working_day) : null;
-  const actualDays = snapshot?.actual_days_worked || lwdInfo?.day || 15;
-  const totalDays = snapshot?.total_working_days || 30;
+  const cycleDays = payoutPeriod ? getDaysInMonth(payoutPeriod.month, payoutPeriod.year) : 30;
+  const totalDays = snapshot?.total_working_days || cycleDays;
+  const actualDays = snapshot?.actual_days_worked ?? (lwdInfo && lwdInfo.day > 0 ? lwdInfo.day : totalDays);
 
   const basePct = snapshot?.base_percentage || 50;
   const allowancePct = snapshot?.allowance_percentage || 25;

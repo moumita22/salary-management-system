@@ -70,6 +70,9 @@ export interface Employee {
   net_salary?: number;
   salary_status?: SalaryStatus;
   calculation_snapshot?: CalculationSnapshot;
+  paid_at?: number | null;
+  created_at?: number;
+  updated_at?: number;
 }
 
 export interface PaginationMetadata {

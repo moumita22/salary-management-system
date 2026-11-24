@@ -29,7 +29,7 @@ export class AdminUserModel extends BaseModel<AdminUser> {
         password_hash VARCHAR(255) NOT NULL,
         full_name VARCHAR(100),
         role VARCHAR(30) NOT NULL DEFAULT 'ADMIN',
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT
       );
       CREATE INDEX IF NOT EXISTS idx_admin_users_username ON admin_users(username);
     `;

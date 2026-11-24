@@ -174,6 +174,13 @@ export default function EmployeeModal({
 
     setSubmitting(true);
     try {
+      const resolvedStatus =
+        lastWorkingDay && status === 'ACTIVE'
+          ? 'EXITING'
+          : !lastWorkingDay && status === 'EXITING'
+          ? 'ACTIVE'
+          : status;
+
       if (isEdit && employee) {
         await updateEmployee(employee.id, {
           first_name: firstName.trim(),
@@ -182,7 +189,7 @@ export default function EmployeeModal({
           role_id: Number(roleId),
           country_code: countryCode,
           annual_ctc: ctcNum,
-          status,
+          status: resolvedStatus,
           date_of_joining: dateOfJoining,
           last_working_day: lastWorkingDay || null,
         });
@@ -194,7 +201,7 @@ export default function EmployeeModal({
           role_id: Number(roleId),
           country_code: countryCode,
           annual_ctc: ctcNum,
-          status,
+          status: resolvedStatus,
           date_of_joining: dateOfJoining,
           last_working_day: lastWorkingDay || null,
         });

@@ -185,7 +185,9 @@ export class EmployeeSalaryDetailModel extends BaseModel<EmployeeSalaryDetail> {
   async disburseCycle(month: number, year: number, dbClient?: PoolClient): Promise<number> {
     const sql = `
       UPDATE employee_salary_details
-      SET status = 'PAID', paid_at = NOW(), updated_at = NOW()
+      SET status = 'PAID',
+          paid_at = (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT,
+          updated_at = (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT
       WHERE payout_month = $1 AND payout_year = $2 AND status = 'DRAFT'
       RETURNING id
     `;
@@ -206,7 +208,9 @@ export class EmployeeSalaryDetailModel extends BaseModel<EmployeeSalaryDetail> {
   ): Promise<EmployeeSalaryDetail | null> {
     const sql = `
       UPDATE employee_salary_details
-      SET status = 'PAID', paid_at = NOW(), updated_at = NOW()
+      SET status = 'PAID',
+          paid_at = (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT,
+          updated_at = (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT
       WHERE employee_id = $1 AND payout_month = $2 AND payout_year = $3 AND status = 'DRAFT'
       RETURNING *
     `;
@@ -289,7 +293,7 @@ export class EmployeeSalaryDetailModel extends BaseModel<EmployeeSalaryDetail> {
         tax_deduction = EXCLUDED.tax_deduction,
         net_salary = EXCLUDED.net_salary,
         calculation_snapshot = EXCLUDED.calculation_snapshot,
-        updated_at = NOW()
+        updated_at = (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT
       WHERE employee_salary_details.status = 'DRAFT'
     `;
 

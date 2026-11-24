@@ -14,6 +14,9 @@ import type {
 
 dotenv.config();
 
+// Parse PostgreSQL BIGINT (INT8, OID 20) as JavaScript number
+pg.types.setTypeParser(20, (val: string) => parseInt(val, 10));
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
