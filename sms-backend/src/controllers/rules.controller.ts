@@ -11,7 +11,7 @@ export const getRules = async (req: Request, res: Response): Promise<void> => {
       roleId: roleId ? Number(roleId) : undefined,
     });
     res.json(rules);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { status, body } = formatErrorResponse(error, 500, 'RuleFetchError');
     res.status(status).json(body);
   }
@@ -44,7 +44,7 @@ export const updateRule = async (req: Request, res: Response): Promise<void> => 
 
     const updated = await salaryComponentRuleModel.update(id, payload);
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { status, body } = formatErrorResponse(error, 400, 'RuleUpdateError');
     res.status(status).json(body);
   }

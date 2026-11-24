@@ -9,7 +9,7 @@ export const getRoles = async (req: Request, res: Response): Promise<void> => {
       ? await roleModel.findByDepartment(departmentId)
       : await roleModel.findAllWithDepartment();
     res.json(roles);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { status, body } = formatErrorResponse(error, 500, 'RoleFetchError');
     res.status(status).json(body);
   }
@@ -28,7 +28,7 @@ export const getRoleById = async (req: Request, res: Response): Promise<void> =>
       return;
     }
     res.json(role);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { status, body } = formatErrorResponse(error, 500, 'RoleFetchError');
     res.status(status).json(body);
   }

@@ -234,7 +234,7 @@ export interface SalaryBatchRecord {
 
 // Feathers-style Service Params & Results
 export interface ServiceQueryParams {
-  [key: string]: any;
+  [key: string]: unknown;
   $limit?: number;
   $skip?: number;
   $sortField?: string;
@@ -250,22 +250,22 @@ export interface ServiceFindResult<T> {
 }
 
 // Feathers-style Hook Context
-export interface HookContext<T = any> {
+export interface HookContext<T = unknown> {
   method: 'find' | 'get' | 'create' | 'patch' | 'remove';
   type: 'before' | 'after' | 'error';
   serviceName: string;
   id?: number | string;
-  data?: any;
+  data?: unknown;
   params?: ServiceQueryParams;
   result?: T;
-  error?: any;
+  error?: unknown;
 }
 
-export type HookFunction<T = any> = (
+export type HookFunction<T = unknown> = (
   context: HookContext<T>
 ) => Promise<HookContext<T> | void> | HookContext<T> | void;
 
-export interface ServiceHooks<T = any> {
+export interface ServiceHooks<T = unknown> {
   before?: {
     all?: HookFunction<T>[];
     find?: HookFunction<T>[];
@@ -345,9 +345,20 @@ export function formatErrorResponse(
   defaultStatus: number = 500,
   defaultCode: string = 'ServerError'
 ): { status: number; body: ApiErrorResponse } {
-  const status = (err as any)?.statusCode || defaultStatus;
-  const rawCode = (err as any)?.name || (err as any)?.code || defaultCode;
-  const message = (err as any)?.message || 'An unexpected error occurred';
+  const errObj = typeof err === 'object' && err !== null ? (err as Record<string, unknown>) : null;
+  const status = typeof errObj?.statusCode === 'number' ? errObj.statusCode : defaultStatus;
+  const rawCode =
+    typeof errObj?.name === 'string'
+      ? errObj.name
+      : typeof errObj?.code === 'string'
+        ? errObj.code
+        : defaultCode;
+  const message =
+    err instanceof Error
+      ? err.message
+      : typeof errObj?.message === 'string'
+        ? errObj.message
+        : 'An unexpected error occurred';
   const code = typeof rawCode === 'string' && rawCode !== 'Error' ? rawCode : defaultCode;
 
   return {

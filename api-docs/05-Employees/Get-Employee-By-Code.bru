@@ -1,0 +1,19 @@
+meta {
+  name: Get Employee By Code
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/employees/code/:code
+  body: none
+  auth: bearer
+}
+
+params:path {
+  code: EMP-01027
+}
+
+auth:bearer {
+  token: {{token}}
+}
