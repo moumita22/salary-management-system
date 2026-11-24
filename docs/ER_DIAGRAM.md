@@ -20,7 +20,7 @@ erDiagram
         string password_hash "PBKDF2 salt and hash"
         string full_name "Administrator full name"
         string role "System role: ADMIN"
-        timestamp created_at
+        bigint created_at "Unix epoch milliseconds"
     }
 
     DEPARTMENTS {
@@ -59,8 +59,8 @@ erDiagram
         string status "ACTIVE, EXITING, TERMINATED"
         date date_of_joining "Date employee joined"
         date last_working_day "LWD for mid-month exits (nullable)"
-        timestamp created_at
-        timestamp updated_at
+        bigint created_at "Unix epoch milliseconds"
+        bigint updated_at "Unix epoch milliseconds"
     }
 
     EMPLOYEE_SALARY_DETAILS {
@@ -78,9 +78,9 @@ erDiagram
         decimal net_salary "Take-home pay: Gross - Tax (USD)"
         jsonb calculation_snapshot "Audit copy of exact percentages applied"
         string status "DRAFT, PAID (Locked upon payment)"
-        timestamp paid_at "Disbursement timestamp"
-        timestamp created_at
-        timestamp updated_at
+        bigint paid_at "Disbursement timestamp (Unix epoch ms)"
+        bigint created_at "Unix epoch milliseconds"
+        bigint updated_at "Unix epoch milliseconds"
     }
 ```
 
@@ -133,6 +133,8 @@ erDiagram
   * `status` (`VARCHAR(20) NOT NULL`): Employment status (`'ACTIVE'`, `'EXITING'`, `'TERMINATED'`).
   * `date_of_joining` (`DATE NOT NULL`): Onboarding date.
   * `last_working_day` (`DATE NULL`): Optional exit date used for mid-month proration.
+  * `created_at` (`BIGINT NOT NULL`): Record creation timestamp (Unix epoch milliseconds).
+  * `updated_at` (`BIGINT NOT NULL`): Record last updated timestamp (Unix epoch milliseconds).
 
 #### E. `employee_salary_details`
 * **Purpose:** Materialized monthly compensation payout snapshot for each employee in USD.
@@ -149,7 +151,9 @@ erDiagram
   * `net_salary` (`NUMERIC(14, 2) NOT NULL`): `Gross Salary - Tax Deduction` (Take-home pay).
   * `calculation_snapshot` (`JSONB NOT NULL`): Exact audit snapshot of percentages, proration days, and custom overrides applied at generation time.
   * `status` (`VARCHAR(20) NOT NULL`): `'DRAFT'` (editable) or `'PAID'` (locked).
-  * `paid_at` (`TIMESTAMP NULL`): Time when month-end payment event was confirmed.
+  * `paid_at` (`BIGINT NULL`): Time when month-end payment event was confirmed (Unix epoch milliseconds).
+  * `created_at` (`BIGINT NOT NULL`): Row creation timestamp (Unix epoch milliseconds).
+  * `updated_at` (`BIGINT NOT NULL`): Row update timestamp (Unix epoch milliseconds).
   * **Constraint:** `UNIQUE(employee_id, payout_year, payout_month)` prevents duplicate payouts for the same cycle.
 
 #### F. `admin_users`
@@ -160,7 +164,7 @@ erDiagram
   * `password_hash` (`VARCHAR(255) NOT NULL`): PBKDF2 hash paired with a 16-byte cryptographically secure random salt (`salt:hash`).
   * `full_name` (`VARCHAR(100)`): Display name of the administrator.
   * `role` (`VARCHAR(30) NOT NULL DEFAULT 'ADMIN'`): System authorization level (`ADMIN`).
-  * `created_at` (`TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`): Account creation timestamp.
+  * `created_at` (`BIGINT NOT NULL`): Account creation timestamp (Unix epoch milliseconds).
 
 ---
 

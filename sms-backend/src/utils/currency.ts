@@ -202,6 +202,33 @@ export function calculateProratedInCents(
 }
 
 /**
+ * Calculate prorated salary for mid-month joins based on exact calendar days.
+ * Dynamically handles February (28/29 days) and 30 vs 31-day months.
+ */
+export function calculateMidMonthJoinInCents(
+  annualCtc: number,
+  rules: RulePercentages,
+  month: number,
+  year: number,
+  dateOfJoining: string | Date
+): CalculatedFinancials & {
+  is_prorated: boolean;
+  total_working_days: number;
+  actual_days_worked: number;
+} {
+  const totalDaysInMonth = getDaysInMonth(month, year);
+  const dateStr =
+    dateOfJoining instanceof Date
+      ? dateOfJoining.toISOString().split('T')[0]
+      : String(dateOfJoining).split('T')[0];
+  const parts = dateStr.split('-');
+  const joinDay = parts.length >= 3 ? parseInt(parts[2], 10) : 1;
+  const boundedJoinDay = Math.max(1, Math.min(isNaN(joinDay) ? 1 : joinDay, totalDaysInMonth));
+  const daysWorked = Math.max(1, totalDaysInMonth - boundedJoinDay + 1);
+  return calculateProratedForDaysWorkedInCents(annualCtc, rules, daysWorked, totalDaysInMonth);
+}
+
+/**
  * Recalculate totals after manual HR override adjustments
  */
 export function recalculateOverrideInCents(

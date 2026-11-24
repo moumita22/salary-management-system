@@ -139,7 +139,8 @@ export interface EmployeeDetail {
   status: string;
   date_of_joining: string;
   last_working_day?: string | null;
-  created_at?: string;
+  created_at?: number;
+  updated_at?: number;
   // Joined fields
   role_title?: string;
   role_level?: SeniorityLevel;
@@ -200,9 +201,9 @@ export interface EmployeeSalaryDetail {
   net_salary: number;
   calculation_snapshot: CalculationSnapshot;
   status: SalaryStatus;
-  paid_at?: string | null;
-  created_at?: string;
-  updated_at?: string;
+  paid_at?: number | null;
+  created_at?: number;
+  updated_at?: number;
 }
 
 export interface CycleMetrics {
@@ -302,7 +303,7 @@ export interface AdminUser {
   password_hash: string;
   full_name: string;
   role: 'ADMIN';
-  created_at?: string;
+  created_at?: number;
 }
 
 export interface AuthSessionUser {

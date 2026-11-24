@@ -31,9 +31,10 @@ export class EmployeeService {
    */
   async getExitingEmployees(
     month: number = 11,
-    year: number = 2026
+    year: number = 2026,
+    status?: string
   ): Promise<DirectoryEmployee[]> {
-    return employeeDetailModel.findExits(month, year);
+    return employeeDetailModel.findExits(month, year, status);
   }
 
   /**
@@ -104,7 +105,15 @@ export class EmployeeService {
       );
     }
 
-    await employeeDetailModel.update(id, data);
+    const updatedPayload: Partial<EmployeeDetail> = { ...data };
+    if (data.last_working_day && (!data.status || data.status === 'ACTIVE')) {
+      updatedPayload.status = 'EXITING';
+    }
+
+    await employeeDetailModel.update(id, {
+      ...updatedPayload,
+      updated_at: Date.now(),
+    });
     return this.getEmployeeById(id);
   }
 }

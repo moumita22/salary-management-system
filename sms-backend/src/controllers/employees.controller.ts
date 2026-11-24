@@ -45,7 +45,8 @@ export const getExitingEmployees = async (req: Request, res: Response): Promise<
   try {
     const month = parseInt(String(req.query.month || '11'), 10);
     const year = parseInt(String(req.query.year || '2026'), 10);
-    const exits = await employeeService.getExitingEmployees(month, year);
+    const statusFilter = typeof req.query.status === 'string' ? req.query.status : undefined;
+    const exits = await employeeService.getExitingEmployees(month, year, statusFilter);
     res.json(exits);
   } catch (error: unknown) {
     const { status, body } = formatErrorResponse(error, 500, 'ExitFetchError');

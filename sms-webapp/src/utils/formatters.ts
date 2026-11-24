@@ -61,14 +61,42 @@ export function formatUsd(val?: number | string | null): string {
 }
 
 /**
- * Parses a Date object, ISO date string, or null into a calendar day number and formatted string
+ * Returns the exact number of calendar days in a given month and year
+ * (Handles leap years accurately: e.g. Feb 2024 -> 29, Feb 2026 -> 28)
  */
-export function parseDate(val?: string | Date | null): { day: number; text: string } {
-  if (!val) return { day: 15, text: '—' };
+export function getDaysInMonth(month: number, year: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+/**
+ * Parses a Date object, ISO date string, epoch millisecond timestamp, or null into a calendar day number and formatted string
+ */
+export function parseDate(val?: string | number | Date | null): { day: number; text: string } {
+  if (!val) return { day: 0, text: '—' };
+  if (typeof val === 'number') {
+    const d = new Date(val);
+    const str = !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : '—';
+    const day = !isNaN(d.getTime()) ? d.getUTCDate() : 0;
+    return { day, text: str };
+  }
   const str = val instanceof Date ? val.toISOString().split('T')[0] : String(val).split('T')[0];
   const parts = str.split('-');
-  const day = parts.length >= 3 ? parseInt(parts[2], 10) : 15;
-  return { day: isNaN(day) ? 15 : day, text: str };
+  const day = parts.length >= 3 ? parseInt(parts[2], 10) : 0;
+  return { day: isNaN(day) ? 0 : day, text: str };
+}
+
+/**
+ * Formats a Unix epoch timestamp (milliseconds), ISO date string, or Date into a readable string (e.g. 'Nov 24, 2026')
+ */
+export function formatTimestamp(val?: number | string | Date | null): string {
+  if (!val) return '—';
+  const d = typeof val === 'number' ? new Date(val) : new Date(val);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 /**

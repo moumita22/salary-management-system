@@ -1,10 +1,11 @@
-import React from 'react';
-import { UserMinus, Calculator, FileText, Lock, AlertCircle, Clock, CreditCard } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { UserMinus, Calculator, FileText, Lock, AlertCircle, Clock, CreditCard, Filter } from 'lucide-react';
 import type { Employee } from '../types/index.js';
-import { formatUsd, parseDate, getLevelBadgeClass } from '../utils/index.js';
+import { formatUsd, parseDate, getLevelBadgeClass, getDaysInMonth } from '../utils/index.js';
 
 export interface SettlementViewProps {
   exits: Employee[];
+  payoutPeriod?: { month: number; year: number };
   onGenerateSettlement: (employeeId: number) => void;
   onDisburseSettlement?: (employeeId: number) => void;
   onViewPayslip?: (employee: Employee) => void;
@@ -15,6 +16,7 @@ export interface SettlementViewProps {
 
 export default function SettlementView({
   exits = [],
+  payoutPeriod,
   onGenerateSettlement,
   onDisburseSettlement,
   onViewPayslip,
@@ -22,6 +24,26 @@ export default function SettlementView({
   generatingId = null,
   disbursingId = null,
 }: SettlementViewProps): React.JSX.Element {
+
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const totalDaysInMonth = payoutPeriod ? getDaysInMonth(payoutPeriod.month, payoutPeriod.year) : 30;
+
+  const pendingCount = exits.filter((e) => e.status === 'EXITING').length;
+  const terminatedCount = exits.filter((e) => e.status === 'TERMINATED').length;
+
+  const filteredExits = useMemo(() => {
+    let result = exits;
+    if (statusFilter !== 'ALL') {
+      result = result.filter((e) => e.status === statusFilter);
+    }
+    return [...result].sort((a, b) => {
+      if (a.status === 'EXITING' && b.status !== 'EXITING') return -1;
+      if (a.status !== 'EXITING' && b.status === 'EXITING') return 1;
+      const dateA = a.last_working_day || '';
+      const dateB = b.last_working_day || '';
+      return dateA.localeCompare(dateB);
+    });
+  }, [exits, statusFilter]);
 
   if (loading) {
     return (
@@ -46,9 +68,9 @@ export default function SettlementView({
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       {/* Table Header Summary Bar */}
-      <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between">
+      <div className="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
+          <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold shrink-0">
             <UserMinus className="w-5 h-5" />
           </div>
           <div>
@@ -59,8 +81,24 @@ export default function SettlementView({
           </div>
         </div>
 
-        <div className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-          {exits.length} Exiting Employee{exits.length === 1 ? '' : 's'}
+        {/* Right Controls: Status Dropdown Filter + Count Badge */}
+        <div className="flex items-center space-x-2.5 self-end sm:self-auto">
+          <div className="flex items-center space-x-1.5 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs text-slate-600">
+            <Filter className="w-3.5 h-3.5 text-slate-400" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-transparent focus:outline-none font-medium cursor-pointer"
+            >
+              <option value="ALL">All Statuses ({exits.length})</option>
+              <option value="EXITING">Active Exiting ({pendingCount})</option>
+              <option value="TERMINATED">Terminated ({terminatedCount})</option>
+            </select>
+          </div>
+
+          <div className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
+            {filteredExits.length} Employee{filteredExits.length === 1 ? '' : 's'}
+          </div>
         </div>
       </div>
 
@@ -82,11 +120,19 @@ export default function SettlementView({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-800 font-medium text-xs">
-            {exits.map((emp) => {
+            {filteredExits.length === 0 ? (
+              <tr>
+                <td colSpan={10} className="py-8 text-center text-slate-500 text-xs">
+                  No exiting employees found with status "{statusFilter}".
+                </td>
+              </tr>
+            ) : (
+              filteredExits.map((emp) => {
               const hasSalary = emp.gross_salary !== null && emp.gross_salary !== undefined;
               const isPaid = emp.salary_status === 'PAID';
               const dateInfo = parseDate(emp.last_working_day);
-              const daysInMonth = 30; // standard calendar reference
+              const daysInMonth = emp.calculation_snapshot?.total_working_days ?? totalDaysInMonth;
+              const actualDaysWorked = emp.calculation_snapshot?.actual_days_worked ?? dateInfo.day;
 
               return (
                 <tr key={emp.employee_id} className="hover:bg-slate-50/80 transition-colors">
@@ -136,7 +182,7 @@ export default function SettlementView({
 
                   {/* Days Worked */}
                   <td className="py-3 px-3 text-center whitespace-nowrap">
-                    <span className="font-bold text-slate-900">{dateInfo.day}</span>
+                    <span className="font-bold text-slate-900">{actualDaysWorked}</span>
                     <span className="text-slate-400 text-[11px]"> / {daysInMonth} days</span>
                   </td>
 
@@ -251,7 +297,7 @@ export default function SettlementView({
                   </td>
                 </tr>
               );
-            })}
+            }))}
           </tbody>
         </table>
       </div>

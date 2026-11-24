@@ -1,9 +1,8 @@
 import {
   calculateSalaryInCents,
   calculateProratedInCents,
-  calculateProratedForDaysWorkedInCents,
+  calculateMidMonthJoinInCents,
   recalculateOverrideInCents,
-  getDaysInMonth,
   RulePercentages,
   CalculatedFinancials,
 } from '../utils/index.js';
@@ -75,11 +74,7 @@ export class SalaryCalculatorService {
     dateOfJoining: string | Date
   ) {
     this.validateRulePercentages(rule);
-    const totalDaysInMonth = getDaysInMonth(month, year);
-    const joinDate = new Date(dateOfJoining);
-    const joinDay = joinDate.getDate();
-    const daysWorked = Math.max(1, totalDaysInMonth - joinDay + 1);
-    return calculateProratedForDaysWorkedInCents(annualCtc, rule, daysWorked, totalDaysInMonth);
+    return calculateMidMonthJoinInCents(annualCtc, rule, month, year, dateOfJoining);
   }
 
   /**
