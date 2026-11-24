@@ -1,0 +1,26 @@
+meta {
+  name: Disburse Individual Exit Settlement
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/salaries/settlement/:id/disburse
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id: 1
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "month": 11,
+    "year": 2026
+  }
+}
