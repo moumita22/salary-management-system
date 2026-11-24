@@ -14,6 +14,15 @@ erDiagram
     ROLES ||--o{ EMPLOYEE_DETAILS : "assigned to"
     EMPLOYEE_DETAILS ||--o{ EMPLOYEE_SALARY_DETAILS : "receives monthly"
 
+    ADMIN_USERS {
+        int id PK "Internal Primary Key"
+        string username UK "Unique login handle"
+        string password_hash "PBKDF2 salt and hash"
+        string full_name "Administrator full name"
+        string role "System role: ADMIN"
+        bigint created_at "Unix epoch milliseconds"
+    }
+
     DEPARTMENTS {
         int id PK "Internal Primary Key"
         string department_id UK "Unique Department ID (e.g. DEP-01)"
@@ -50,8 +59,8 @@ erDiagram
         string status "ACTIVE, EXITING, TERMINATED"
         date date_of_joining "Date employee joined"
         date last_working_day "LWD for mid-month exits (nullable)"
-        timestamp created_at
-        timestamp updated_at
+        bigint created_at "Unix epoch milliseconds"
+        bigint updated_at "Unix epoch milliseconds"
     }
 
     EMPLOYEE_SALARY_DETAILS {
@@ -62,15 +71,16 @@ erDiagram
         decimal base_salary "Base Salary Amount (USD)"
         decimal allowance "Allowance Amount (USD)"
         decimal bonus "Performance / Variable Bonus (USD)"
+        decimal added_bonus "Discretionary / Spot Bonus (USD)"
         decimal employer_retirals "Employer Retirals/Benefits (USD)"
-        decimal gross_salary "Base + Allowance + Bonus (USD)"
+        decimal gross_salary "Base + Allowance + Bonus + Added Bonus (USD)"
         decimal tax_deduction "Taxes and Deductions (USD)"
         decimal net_salary "Take-home pay: Gross - Tax (USD)"
         jsonb calculation_snapshot "Audit copy of exact percentages applied"
         string status "DRAFT, PAID (Locked upon payment)"
-        timestamp paid_at "Disbursement timestamp"
-        timestamp created_at
-        timestamp updated_at
+        bigint paid_at "Disbursement timestamp (Unix epoch ms)"
+        bigint created_at "Unix epoch milliseconds"
+        bigint updated_at "Unix epoch milliseconds"
     }
 ```
 
@@ -123,6 +133,8 @@ erDiagram
   * `status` (`VARCHAR(20) NOT NULL`): Employment status (`'ACTIVE'`, `'EXITING'`, `'TERMINATED'`).
   * `date_of_joining` (`DATE NOT NULL`): Onboarding date.
   * `last_working_day` (`DATE NULL`): Optional exit date used for mid-month proration.
+  * `created_at` (`BIGINT NOT NULL`): Record creation timestamp (Unix epoch milliseconds).
+  * `updated_at` (`BIGINT NOT NULL`): Record last updated timestamp (Unix epoch milliseconds).
 
 #### E. `employee_salary_details`
 * **Purpose:** Materialized monthly compensation payout snapshot for each employee in USD.
@@ -131,15 +143,28 @@ erDiagram
   * `employee_id` (`INT NOT NULL REFERENCES employee_details(id)`): Foreign key linking to the employee primary key.
   * `payout_month` (`INT NOT NULL CHECK (payout_month BETWEEN 1 AND 12)`): Pay cycle month.
   * `payout_year` (`INT NOT NULL`): Pay cycle year (e.g. 2026).
-  * `base_salary`, `allowance`, `bonus`: Monthly earnings breakdown (USD).
+  * `base_salary`, `allowance`, `bonus`: Monthly earnings breakdown governed by policy rules (USD).
+  * `added_bonus` (`NUMERIC(14, 2) NOT NULL DEFAULT 0.00`): Discretionary spot bonus or manual compensation override distinct from contractual policy bonus.
   * `employer_retirals` (`NUMERIC(14, 2) NOT NULL DEFAULT 0.00`): Employer benefits/retirals contribution.
-  * `gross_salary` (`NUMERIC(14, 2) NOT NULL`): `Base + Allowance + Bonus`.
+  * `gross_salary` (`NUMERIC(14, 2) NOT NULL`): `Base + Allowance + Bonus + Added Bonus`.
   * `tax_deduction` (`NUMERIC(14, 2) NOT NULL`): Statutory tax and deduction amount.
   * `net_salary` (`NUMERIC(14, 2) NOT NULL`): `Gross Salary - Tax Deduction` (Take-home pay).
-  * `calculation_snapshot` (`JSONB NOT NULL`): Exact audit snapshot of percentages and custom overrides applied at generation time.
+  * `calculation_snapshot` (`JSONB NOT NULL`): Exact audit snapshot of percentages, proration days, and custom overrides applied at generation time.
   * `status` (`VARCHAR(20) NOT NULL`): `'DRAFT'` (editable) or `'PAID'` (locked).
-  * `paid_at` (`TIMESTAMP NULL`): Time when month-end payment event was confirmed.
+  * `paid_at` (`BIGINT NULL`): Time when month-end payment event was confirmed (Unix epoch milliseconds).
+  * `created_at` (`BIGINT NOT NULL`): Row creation timestamp (Unix epoch milliseconds).
+  * `updated_at` (`BIGINT NOT NULL`): Row update timestamp (Unix epoch milliseconds).
   * **Constraint:** `UNIQUE(employee_id, payout_year, payout_month)` prevents duplicate payouts for the same cycle.
+
+#### F. `admin_users`
+* **Purpose:** Stores authenticated administrative user credentials for role-based system access.
+* **Columns:**
+  * `id` (`SERIAL PRIMARY KEY`): Internal auto-incrementing ID.
+  * `username` (`VARCHAR(50) UNIQUE NOT NULL`): Unique administrator handle.
+  * `password_hash` (`VARCHAR(255) NOT NULL`): PBKDF2 hash paired with a 16-byte cryptographically secure random salt (`salt:hash`).
+  * `full_name` (`VARCHAR(100)`): Display name of the administrator.
+  * `role` (`VARCHAR(30) NOT NULL DEFAULT 'ADMIN'`): System authorization level (`ADMIN`).
+  * `created_at` (`BIGINT NOT NULL`): Account creation timestamp (Unix epoch milliseconds).
 
 ---
 
@@ -163,7 +188,8 @@ To guarantee sub-10ms queries across 10,000 records, the following B-Tree indexe
 3. `idx_emp_role_id` & `idx_emp_country`: Fast filtering by role and country.
 4. `idx_emp_name` & `idx_emp_email`: Rapid debounced searching across 10,000 employees.
 5. `idx_emp_lwd`: Fast retrieval of exiting employees for the settlements tab.
-6. `idx_sal_period` & `idx_sal_status`: Instant filtering for monthly pay cycles and locked status checks.
+6. `idx_sal_period` (`payout_year, payout_month`) & `idx_sal_status`: Instant filtering for monthly pay cycles and locked status checks.
+7. `idx_admin_users_username`: Rapid administrative authentication credential lookups.
 
 ---
 

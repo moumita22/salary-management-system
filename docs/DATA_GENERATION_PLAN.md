@@ -6,9 +6,9 @@ This document details the exact synthetic data generation strategy to seed 10,00
 ---
 
 ## 1. Objective & Benchmark
-* **Scale:** Generate and persist 12 departments, 36 roles, 180 component rules, and exactly **10,000 employee profiles** in `employee_details`.
+* **Scale:** Generate and persist 12 departments, 36 roles, 180 component rules, **1 default System Administrator** (`admin` / `adminpassword`), and exactly **10,000 employee profiles** in `employee_details`.
 * **Salary Generation Strategy:** `employee_salary_details` is intentionally left unseeded so the calculation engine, proration formulas, and payment locking can be tested and generated dynamically via the REST API.
-* **Speed:** Ingestion completes in **under 2.5 seconds** using chunked transactional batch inserts (1,000 rows per batch).
+* **Speed:** Ingestion completes in **under 2.0 seconds** using chunked transactional batch inserts (1,000 rows per batch).
 * **Currency:** All compensation figures unified in **USD ($)** for clean global reporting.
 
 ---
@@ -135,6 +135,7 @@ Instead of hardcoding salary rows in the seed script, salary payouts are calcula
 
 * The 10,000 employee records are chunked into **1,000 records per SQL query**.
 * The entire seed operation runs inside a single `BEGIN ... COMMIT` transaction.
+* **Administrator Pre-Seeding:** Step 7 explicitly seeds the default system administrator (`admin` / `adminpassword`) using PBKDF2 salt:hash verification in `admin_users`, guaranteeing immediate login readiness.
 * Database indexes are leveraged, enabling 10,000 employees to seed in **under 2.5 seconds**.
 
 ---

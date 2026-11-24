@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { pool, initDatabase } from '../src/config/db.js';
 import { faker } from '@faker-js/faker';
 
@@ -23,7 +24,7 @@ const DEPARTMENTS = [
 // 2. Roles: 3 tiers per department
 const ROLES_BY_DEPT = {
   'DEP-01': [
-    { title: 'Junior Software Engineer', level: 'JUNIOR' },
+    { title: 'Associate Software Engineer', level: 'JUNIOR' },
     { title: 'Software Engineer', level: 'MID_LEVEL' },
     { title: 'Senior Staff Engineer', level: 'SENIOR' },
   ],
@@ -303,9 +304,20 @@ async function seed() {
       console.log(`  ⏱️  Batch ${batchNumber}/${totalBatches}: Inserted ${b + batch.length} / ${employeesToInsert.length} employees (took ${batchDuration}s | running time: ${runningElapsed}s)`);
     }
 
+    // Step 7: Explicitly seed default System Administrator
+    console.log('7. Seeding default system administrator (admin / adminpassword)...');
+    const adminSalt = crypto.randomBytes(16).toString('hex');
+    const adminHash = crypto.pbkdf2Sync('adminpassword', adminSalt, 10000, 64, 'sha512').toString('hex');
+    await client.query(
+      `INSERT INTO admin_users (username, password_hash, full_name, role)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (username) DO NOTHING;`,
+      ['admin', `${adminSalt}:${adminHash}`, 'System Administrator', 'ADMIN']
+    );
+
     await client.query('COMMIT');
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
-    console.log(`\n🎉 SEED SUCCESSFUL! Seeded 12 departments, 36 roles, 180 rules, and exactly 10,000 employees in ${elapsed}s across ${totalBatches} batches.`);
+    console.log(`\n🎉 SEED SUCCESSFUL! Seeded 12 departments, 36 roles, 180 rules, 1 admin user, and exactly 10,000 employees in ${elapsed}s across ${totalBatches} batches.`);
     
   } catch (err) {
     await client.query('ROLLBACK');

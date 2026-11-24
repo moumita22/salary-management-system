@@ -1,0 +1,29 @@
+meta {
+  name: Update Employee Profile
+  type: http
+  seq: 8
+}
+
+put {
+  url: {{baseUrl}}/employees/:id
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id: 1
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "first_name": "Alexander",
+    "last_name": "Hamilton",
+    "annual_ctc": 145000,
+    "status": "EXITING",
+    "last_working_day": "2026-11-28"
+  }
+}

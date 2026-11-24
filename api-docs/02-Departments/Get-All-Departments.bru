@@ -1,0 +1,119 @@
+meta {
+  name: Get All Departments
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/departments
+  body: none
+  auth: none
+}
+
+example {
+  name: example
+  
+  request: {
+    url: {{baseUrl}}/departments
+    method: GET
+    mode: none
+  }
+  
+  response: {
+    headers: {
+      x-powered-by: Express
+      access-control-allow-origin: *
+      content-type: application/json; charset=utf-8
+      content-length: 948
+      etag: W/"3b4-hFejQyKC+nVtpXDY67zOB2xJV1Q"
+      date: Sun, 22 Nov 2026 15:25:37 GMT
+      connection: keep-alive
+      keep-alive: timeout=5
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        [
+          {
+            "id": 1,
+            "department_id": "DEP-01",
+            "name": "Engineering",
+            "employee_count": 3000
+          },
+          {
+            "id": 2,
+            "department_id": "DEP-02",
+            "name": "Sales",
+            "employee_count": 1200
+          },
+          {
+            "id": 3,
+            "department_id": "DEP-03",
+            "name": "Operations",
+            "employee_count": 1000
+          },
+          {
+            "id": 4,
+            "department_id": "DEP-04",
+            "name": "Customer Support",
+            "employee_count": 900
+          },
+          {
+            "id": 5,
+            "department_id": "DEP-05",
+            "name": "Marketing",
+            "employee_count": 700
+          },
+          {
+            "id": 6,
+            "department_id": "DEP-06",
+            "name": "Finance",
+            "employee_count": 600
+          },
+          {
+            "id": 7,
+            "department_id": "DEP-07",
+            "name": "Product Management",
+            "employee_count": 600
+          },
+          {
+            "id": 8,
+            "department_id": "DEP-08",
+            "name": "Data & Analytics",
+            "employee_count": 500
+          },
+          {
+            "id": 9,
+            "department_id": "DEP-09",
+            "name": "Research & Development",
+            "employee_count": 500
+          },
+          {
+            "id": 10,
+            "department_id": "DEP-10",
+            "name": "Human Resources",
+            "employee_count": 400
+          },
+          {
+            "id": 11,
+            "department_id": "DEP-11",
+            "name": "Legal & Compliance",
+            "employee_count": 300
+          },
+          {
+            "id": 12,
+            "department_id": "DEP-12",
+            "name": "Administration",
+            "employee_count": 300
+          }
+        ]
+      '''
+    }
+  }
+}

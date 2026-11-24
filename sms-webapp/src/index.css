@@ -2,6 +2,15 @@
 
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-100 antialiased font-sans;
+    @apply bg-slate-50 text-slate-900 antialiased font-sans min-h-screen selection:bg-indigo-100 selection:text-indigo-900;
   }
+}
+
+/* Custom scrollbar for horizontal department pill bar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

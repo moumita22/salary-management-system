@@ -1,0 +1,27 @@
+meta {
+  name: 3. Update Salary Override (Guarded Against PAID Records)
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/salaries/1
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "month": 11,
+    "year": 2026,
+    "overrides": {
+      "bonus": 2500.00
+    },
+    "customAdditions": [
+      {
+        "name": "Spot / Performance Bonus",
+        "amount": 500.00
+      }
+    ]
+  }
+}

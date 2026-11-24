@@ -1,0 +1,18 @@
+meta {
+  name: Generate Prorated Settlement (LWD Exit)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/salaries/settlement/1
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "month": 11,
+    "year": 2026
+  }
+}

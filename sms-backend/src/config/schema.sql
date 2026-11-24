@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS employee_details CASCADE;
 DROP TABLE IF EXISTS salary_component_rules CASCADE;
 DROP TABLE IF EXISTS roles CASCADE;
 DROP TABLE IF EXISTS departments CASCADE;
+DROP TABLE IF EXISTS admin_users CASCADE;
 
 -- 1. Departments Table
 CREATE TABLE departments (
@@ -53,8 +54,8 @@ CREATE TABLE employee_details (
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'EXITING', 'TERMINATED')),
     date_of_joining DATE NOT NULL DEFAULT CURRENT_DATE,
     last_working_day DATE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT,
+    updated_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT
 );
 
 -- 5. Employee Salary Details Table (Monthly financial snapshot in USD)
@@ -66,15 +67,16 @@ CREATE TABLE employee_salary_details (
     base_salary NUMERIC(14, 2) NOT NULL,
     allowance NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
     bonus NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
+    added_bonus NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
     employer_retirals NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
     gross_salary NUMERIC(14, 2) NOT NULL,
     tax_deduction NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
     net_salary NUMERIC(14, 2) NOT NULL,
     calculation_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
     status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'PAID')),
-    paid_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    paid_at BIGINT,
+    created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT,
+    updated_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT,
     UNIQUE(employee_id, payout_year, payout_month)
 );
 
@@ -92,3 +94,15 @@ CREATE INDEX IF NOT EXISTS idx_sal_emp_id ON employee_salary_details(employee_id
 CREATE INDEX IF NOT EXISTS idx_sal_period ON employee_salary_details(payout_year, payout_month);
 CREATE INDEX IF NOT EXISTS idx_sal_status ON employee_salary_details(status);
 CREATE INDEX IF NOT EXISTS idx_sal_net ON employee_salary_details(net_salary);
+
+-- 6. Admin Users Table (Authentication & Access Control)
+CREATE TABLE IF NOT EXISTS admin_users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name VARCHAR(100),
+    role VARCHAR(30) NOT NULL DEFAULT 'ADMIN',
+    created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_users_username ON admin_users(username);

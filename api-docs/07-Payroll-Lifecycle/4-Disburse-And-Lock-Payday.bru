@@ -1,0 +1,18 @@
+meta {
+  name: 4. Disburse & Lock Payday (Financial Immutability)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/salaries/disburse
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "month": 11,
+    "year": 2026
+  }
+}

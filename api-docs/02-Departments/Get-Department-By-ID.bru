@@ -1,0 +1,50 @@
+meta {
+  name: Get Department By ID
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/departments/10
+  body: none
+  auth: none
+}
+
+example {
+  name: example
+  
+  request: {
+    url: {{baseUrl}}/departments/10
+    method: GET
+    mode: none
+  }
+  
+  response: {
+    headers: {
+      x-powered-by: Express
+      access-control-allow-origin: *
+      content-type: application/json; charset=utf-8
+      content-length: 59
+      etag: W/"3b-BzoK9YCGAta9C/UfBEygulvjy+Q"
+      date: Sun, 22 Nov 2026 15:26:13 GMT
+      connection: keep-alive
+      keep-alive: timeout=5
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "id": 10,
+          "department_id": "DEP-10",
+          "name": "Human Resources"
+        }
+      '''
+    }
+  }
+}

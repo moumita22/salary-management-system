@@ -1,0 +1,657 @@
+{
+  "testRunSummary": {
+    "framework": "bun:test / Node.js",
+    "version": "1.4.4",
+    "testFile": "sms-backend/tests/financials.test.ts",
+    "executionTimestamp": "2026-11-24T01:48:12.000Z",
+    "totalSuites": 10,
+    "totalTests": 29,
+    "passed": 29,
+    "failed": 0,
+    "skipped": 0,
+    "totalAssertions": 102,
+    "durationMs": 417.0,
+    "status": "SUCCESS"
+  },
+  "testSuites": [
+    {
+      "suiteId": "SUITE-BE-01",
+      "suiteName": "Financial Math & Currency Utilities (Integer Cents)",
+      "description": "Validates exact cent calculations eliminating IEEE 754 precision issues, dynamic month proration, and distinct overrides.",
+      "tests": [
+        {
+          "testId": "TC-BE-001",
+          "name": "should accurately convert dollars to cents and back without float drift",
+          "targetEdgeCase": "Floating point drift during monetary multiplication and division",
+          "input": {
+            "valuesToCents": [100.55, "2500.00"],
+            "valuesToDollars": [10055]
+          },
+          "expectedOutput": {
+            "toCents_100_55": 10055,
+            "toCents_2500_00": 250000,
+            "toDollars_10055": 100.55
+          },
+          "assertions": 3,
+          "status": "PASSED",
+          "durationMs": 0.85,
+          "realtimeLog": "(pass) Financial Math & Currency Utilities (Integer Cents) > should accurately convert dollars to cents and back without float drift [0.85ms]"
+        },
+        {
+          "testId": "TC-BE-002",
+          "name": "should calculate standard full-month salary and guarantee exact reconciliation",
+          "targetEdgeCase": "Ensuring Gross exactly equals Net plus Deductions without 1-cent reconciliation error",
+          "input": {
+            "annualCtc": 120000,
+            "rule": {
+              "base_percentage": 50.0,
+              "allowance_percentage": 25.0,
+              "bonus_percentage": 15.0,
+              "employer_retirals_percentage": 10.0,
+              "deduction_percentage": 12.0
+            }
+          },
+          "expectedOutput": {
+            "monthly_ctc": 10000.0,
+            "base_salary": 5000.0,
+            "allowance": 2500.0,
+            "bonus": 1500.0,
+            "employer_retirals": 1000.0,
+            "gross_salary": 9000.0,
+            "tax_deduction": 1080.0,
+            "net_salary": 7920.0,
+            "reconciliationCheck": "gross === base + allowance + bonus && net === gross - tax_deduction"
+          },
+          "assertions": 8,
+          "status": "PASSED",
+          "durationMs": 0.13,
+          "realtimeLog": "(pass) Financial Math & Currency Utilities (Integer Cents) > should calculate standard full-month salary and guarantee exact reconciliation [0.13ms]"
+        },
+        {
+          "testId": "TC-BE-003",
+          "name": "should accurately calculate mid-month exit proration using dynamic calendar days",
+          "targetEdgeCase": "Exit proration using exact days in target month (November 30 days) and Date object support",
+          "input": {
+            "annualCtc": 120000,
+            "month": 11,
+            "year": 2026,
+            "exitDate": "2026-11-20"
+          },
+          "expectedOutput": {
+            "is_prorated": true,
+            "total_working_days": 30,
+            "actual_days_worked": 20,
+            "gross_salary": 6000.0,
+            "tax_deduction": 720.0,
+            "net_salary": 5280.0
+          },
+          "assertions": 8,
+          "status": "PASSED",
+          "durationMs": 0.58,
+          "realtimeLog": "(pass) Financial Math & Currency Utilities (Integer Cents) > should accurately calculate mid-month exit proration using dynamic calendar days [0.58ms]"
+        },
+        {
+          "testId": "TC-BE-004",
+          "name": "should accurately prorate February (28 days in non-leap year)",
+          "targetEdgeCase": "Non-leap year February 28 days divisor accuracy",
+          "input": {
+            "annualCtc": 120000,
+            "month": 2,
+            "year": 2025,
+            "exitDate": "2025-02-14"
+          },
+          "expectedOutput": {
+            "total_working_days": 28,
+            "actual_days_worked": 14,
+            "gross_salary": 4500.0
+          },
+          "assertions": 3,
+          "status": "PASSED",
+          "durationMs": 0.04,
+          "realtimeLog": "(pass) Financial Math & Currency Utilities (Integer Cents) > should accurately prorate February (28 days in non-leap year) [0.04ms]"
+        },
+        {
+          "testId": "TC-BE-005",
+          "name": "should accurately prorate mid-month joining for an employee joining on Oct 15 (31-day month)",
+          "targetEdgeCase": "New hire proration on a 31-day month (Oct 15 to Oct 31 = 17 days worked)",
+          "input": {
+            "annualCtc": 120000,
+            "month": 10,
+            "year": 2026,
+            "joiningDate": "2026-10-15"
+          },
+          "expectedOutput": {
+            "is_prorated": true,
+            "total_working_days": 31,
+            "actual_days_worked": 17,
+            "base_salary": 2741.94,
+            "gross_reconciled": true,
+            "net_reconciled": true
+          },
+          "assertions": 5,
+          "status": "PASSED",
+          "durationMs": 9.97,
+          "realtimeLog": "(pass) Financial Math & Currency Utilities (Integer Cents) > should accurately prorate mid-month joining for an employee joining on Oct 15 (31-day month) [9.97ms]"
+        },
+        {
+          "testId": "TC-BE-006",
+          "name": "should accurately calculate manual overrides with added bonus while keeping contractual bonus distinct",
+          "targetEdgeCase": "Ensuring one-off manual performance bonus does not mutate baseline contractual bonus",
+          "input": {
+            "baseSalary": 5000,
+            "allowance": 2500,
+            "contractualBonus": 1500,
+            "deductionPercentage": 10,
+            "addedBonus": 500
+          },
+          "expectedOutput": {
+            "base_salary": 5000.0,
+            "allowance": 2500.0,
+            "bonus": 1500.0,
+            "added_bonus": 500.0,
+            "gross_salary": 9500.0,
+            "tax_deduction": 950.0,
+            "net_salary": 8550.0
+          },
+          "assertions": 7,
+          "status": "PASSED",
+          "durationMs": 0.14,
+          "realtimeLog": "(pass) Financial Math & Currency Utilities (Integer Cents) > should accurately calculate manual overrides with added bonus while keeping contractual bonus distinct [0.14ms]"
+        }
+      ]
+    },
+    {
+      "suiteId": "SUITE-BE-02",
+      "suiteName": "SalaryCalculatorService Rule Validation",
+      "description": "Enforces that salary calculation percentage splits sum strictly to 100%.",
+      "tests": [
+        {
+          "testId": "TC-BE-007",
+          "name": "should succeed when rule percentages sum to exactly 100%",
+          "targetEdgeCase": "Valid component breakdown (55% Base + 25% Allowance + 10% Bonus + 10% Retirals = 100%)",
+          "input": {
+            "base_percentage": 55.0,
+            "allowance_percentage": 25.0,
+            "bonus_percentage": 10.0,
+            "employer_retirals_percentage": 10.0,
+            "deduction_percentage": 8.0
+          },
+          "expectedOutput": {
+            "valid": true,
+            "throws": false
+          },
+          "assertions": 1,
+          "status": "PASSED",
+          "durationMs": 0.98,
+          "realtimeLog": "(pass) SalaryCalculatorService Rule Validation > should succeed when rule percentages sum to exactly 100% [0.98ms]"
+        },
+        {
+          "testId": "TC-BE-008",
+          "name": "should throw an error when rule percentages do not sum to 100%",
+          "targetEdgeCase": "Rejecting unbalanced percentages (Sum = 105%) to prevent financial drift",
+          "input": {
+            "base_percentage": 60.0,
+            "allowance_percentage": 25.0,
+            "bonus_percentage": 10.0,
+            "employer_retirals_percentage": 10.0
+          },
+          "expectedOutput": {
+            "throws": true,
+            "errorMessagePattern": "must equal exactly 100.00%"
+          },
+          "assertions": 1,
+          "status": "PASSED",
+          "durationMs": 1.51,
+          "realtimeLog": "(pass) SalaryCalculatorService Rule Validation > should throw an error when rule percentages do not sum to 100% [1.51ms]"
+        }
+      ]
+    },
+    {
+      "suiteId": "SUITE-BE-03",
+      "suiteName": "Financial Immutability Guard",
+      "description": "Guarantees disbursed/finalized salary records cannot be tampered with or recalculated.",
+      "tests": [
+        {
+          "testId": "TC-BE-009",
+          "name": "should allow operations on DRAFT records",
+          "targetEdgeCase": "Unrestricted modifications prior to payroll finalization",
+          "input": {
+            "status": "DRAFT"
+          },
+          "expectedOutput": {
+            "throws": false
+          },
+          "assertions": 1,
+          "status": "PASSED",
+          "durationMs": 0.06,
+          "realtimeLog": "(pass) Financial Immutability Guard > should allow operations on DRAFT records [0.06ms]"
+        },
+        {
+          "testId": "TC-BE-010",
+          "name": "should reject operations on PAID records with 403 Forbidden",
+          "targetEdgeCase": "Strict 403 Forbidden rejection with FinancialLockError when mutating PAID records",
+          "input": {
+            "status": "PAID"
+          },
+          "expectedOutput": {
+            "throws": true,
+            "statusCode": 403,
+            "name": "FinancialLockError",
+            "messagePattern": "Financial Immutability Violation"
+          },
+          "assertions": 3,
+          "status": "PASSED",
+          "durationMs": 0.67,
+          "realtimeLog": "(pass) Financial Immutability Guard > should reject operations on PAID records with 403 Forbidden [0.67ms]"
+        }
+      ]
+    },
+    {
+      "suiteId": "SUITE-BE-04",
+      "suiteName": "BaseModel Security: Column Allowlist Guard",
+      "description": "SQL injection prevention via strict column allowlist registration.",
+      "tests": [
+        {
+          "testId": "TC-BE-011",
+          "name": "should allow valid registered columns",
+          "targetEdgeCase": "Legitimate model schema columns allowed through query builder",
+          "input": {
+            "columns": ["id", "name", "email"]
+          },
+          "expectedOutput": {
+            "allowedColumns": ["id", "name", "email"]
+          },
+          "assertions": 3,
+          "status": "PASSED",
+          "durationMs": 0.06,
+          "realtimeLog": "(pass) BaseModel Security: Column Allowlist Guard > should allow valid registered columns [0.06ms]"
+        },
+        {
+          "testId": "TC-BE-012",
+          "name": "should reject unauthorized or arbitrary SQL injection columns",
+          "targetEdgeCase": "Rejection of raw SQL payloads and unlisted table columns",
+          "input": {
+            "maliciousColumns": [
+              "salary; DROP TABLE users;--",
+              "password_hash"
+            ]
+          },
+          "expectedOutput": {
+            "throws": true,
+            "errorMessagePattern": "Unauthorized column access"
+          },
+          "assertions": 2,
+          "status": "PASSED",
+          "durationMs": 0.05,
+          "realtimeLog": "(pass) BaseModel Security: Column Allowlist Guard > should reject unauthorized or arbitrary SQL injection columns [0.05ms]"
+        }
+      ]
+    },
+    {
+      "suiteId": "SUITE-BE-05",
+      "suiteName": "DepartmentModel & Service Validation",
+      "description": "Distinguishes between integer auto-increment PKs and formatted business codes.",
+      "tests": [
+        {
+          "testId": "TC-BE-013",
+          "name": "should correctly distinguish between numeric IDs and department codes in findByIdOrCode",
+          "targetEdgeCase": "Correctly dispatching numeric 1 or string '2' to PK query and 'DEP-01' to code query",
+          "input": {
+            "queries": [1, "2", "DEP-01", "dep-02"]
+          },
+          "expectedOutput": {
+            "numericDispatches": [1, 2],
+            "codeDispatches": ["DEP-01", "dep-02"]
+          },
+          "assertions": 4,
+          "status": "PASSED",
+          "durationMs": 1.47,
+          "realtimeLog": "(pass) DepartmentModel & Service Validation > should correctly distinguish between numeric IDs and department codes in findByIdOrCode [1.47ms]"
+        }
+      ]
+    },
+    {
+      "suiteId": "SUITE-BE-06",
+      "suiteName": "EmployeeDetailModel & EmployeeService Separation (PK vs UK)",
+      "description": "Separates database surrogate keys from business employee IDs and validates onboarding data.",
+      "tests": [
+        {
+          "testId": "TC-BE-014",
+          "name": "should route PK lookups to findByIdWithDetails and UK lookups to findByCodeWithDetails",
+          "targetEdgeCase": "Clean architectural routing for internal joins vs external URL code lookups",
+          "input": {
+            "pkQuery": 42,
+            "codeQuery": "EMP-0042"
+          },
+          "expectedOutput": {
+            "pkCalledWith": 42,
+            "ukCalledWith": "EMP-0042"
+          },
+          "assertions": 2,
+          "status": "PASSED",
+          "durationMs": 1.22,
+          "realtimeLog": "(pass) EmployeeDetailModel & EmployeeService Separation (PK vs UK) > should route PK lookups to findByIdWithDetails and UK lookups to findByCodeWithDetails [1.22ms]"
+        },
+        {
+          "testId": "TC-BE-015",
+          "name": "should validate mandatory fields when creating an employee",
+          "targetEdgeCase": "Rejecting missing names, malformed emails, missing roles, and zero Annual CTC",
+          "input": {
+            "missingNames": { "email": "test@example.com" },
+            "invalidEmail": { "first_name": "Jane", "last_name": "Doe", "email": "invalid-email" },
+            "missingRole": { "first_name": "Jane", "last_name": "Doe", "email": "jane@example.com" },
+            "zeroCtc": { "first_name": "Jane", "last_name": "Doe", "email": "jane@example.com", "role_id": 1, "annual_ctc": 0 }
+          },
+          "expectedOutput": {
+            "allRejectedWithAppErrors": true
+          },
+          "assertions": 4,
+          "status": "PASSED",
+          "durationMs": 0.67,
+          "realtimeLog": "(pass) EmployeeDetailModel & EmployeeService Separation (PK vs UK) > should validate mandatory fields when creating an employee [0.67ms]"
+        }
+      ]
+    },
+    {
+      "suiteId": "SUITE-BE-07",
+      "suiteName": "Standardized API Error Response Formatter",
+      "description": "Standardizes application error contracts and status codes.",
+      "tests": [
+        {
+          "testId": "TC-BE-016",
+          "name": "should format AppError into standardized status code and body",
+          "targetEdgeCase": "Uniform JSON error contract for operational domain exceptions",
+          "input": {
+            "error": "new AppError('Financial Immutability Violation', 403, 'FinancialLockError')"
+          },
+          "expectedOutput": {
+            "status": 403,
+            "body": {
+              "success": false,
+              "statusCode": 403,
+              "code": "FinancialLockError",
+              "error": "Financial Immutability Violation",
+              "timestamp": "ISO-TIMESTAMP"
+            }
+          },
+          "assertions": 6,
+          "status": "PASSED",
+          "durationMs": 0.35,
+          "realtimeLog": "(pass) Standardized API Error Response Formatter > should format AppError into standardized status code and body [0.35ms]"
+        },
+        {
+          "testId": "TC-BE-017",
+          "name": "should format standard Error into default status code and code name",
+          "targetEdgeCase": "Fallback error wrapper for uncaught native runtime errors",
+          "input": {
+            "error": "new Error('Database connection failed')",
+            "defaultStatus": 500,
+            "defaultCode": "DatabaseError"
+          },
+          "expectedOutput": {
+            "status": 500,
+            "body": {
+              "success": false,
+              "statusCode": 500,
+              "code": "DatabaseError",
+              "error": "Database connection failed",
+              "timestamp": "ISO-TIMESTAMP"
+            }
+          },
+          "assertions": 6,
+          "status": "PASSED",
+          "durationMs": 0.08,
+          "realtimeLog": "(pass) Standardized API Error Response Formatter > should format standard Error into default status code and code name [0.08ms]"
+        }
+      ]
+    },
+    {
+      "suiteId": "SUITE-BE-08",
+      "suiteName": "Full Name Multi-field Search Support",
+      "description": "Queries full employee name across concatenated first_name and last_name fields.",
+      "tests": [
+        {
+          "testId": "TC-BE-018",
+          "name": "should find employee by full name (first + last name concatenation)",
+          "targetEdgeCase": "Multi-field space-separated search without requiring separate first/last search inputs",
+          "input": {
+            "search": "Bryon Ryan"
+          },
+          "expectedOutput": {
+            "matched": true,
+            "employee_id": "EMP-01027",
+            "first_name": "Bryon",
+            "last_name": "Ryan"
+          },
+          "assertions": 3,
+          "status": "PASSED",
+          "durationMs": 152.0,
+          "realtimeLog": "(pass) Full Name Multi-field Search Support > should find employee by full name (first + last name concatenation) [152.00ms]"
+        }
+      ]
+    },
+    {
+      "suiteId": "SUITE-BE-09",
+      "suiteName": "Bearer Token Authentication & User Verification",
+      "description": "Cryptographic session verification, PBKDF2 hashing, and token lifetime enforcement.",
+      "tests": [
+        {
+          "testId": "TC-BE-019",
+          "name": "should authenticate admin user and issue valid Bearer token",
+          "targetEdgeCase": "Issuance of standard 3-part Bearer JWT token with ADMIN role claim",
+          "input": {
+            "username": "admin",
+            "password": "adminpassword"
+          },
+          "expectedOutput": {
+            "tokenParts": 3,
+            "user": {
+              "username": "admin",
+              "role": "ADMIN"
+            },
+            "tokenDecodable": true
+          },
+          "assertions": 6,
+          "status": "PASSED",
+          "durationMs": 20.36,
+          "realtimeLog": "(pass) Bearer Token Authentication & User Verification > should authenticate admin user and issue valid Bearer token [20.36ms]"
+        },
+        {
+          "testId": "TC-BE-020",
+          "name": "should reject invalid password with 401 InvalidCredentialsError",
+          "targetEdgeCase": "Rejection of invalid password credentials",
+          "input": {
+            "username": "admin",
+            "password": "wrongpassword"
+          },
+          "expectedOutput": {
+            "rejects": true,
+            "messagePattern": "Invalid username or password"
+          },
+          "assertions": 1,
+          "status": "PASSED",
+          "durationMs": 5.48,
+          "realtimeLog": "(pass) Bearer Token Authentication & User Verification > should reject invalid password with 401 InvalidCredentialsError [5.48ms]"
+        },
+        {
+          "testId": "TC-BE-021",
+          "name": "should register a new administrator user and issue Bearer token",
+          "targetEdgeCase": "Admin creation with automated PBKDF2 password hashing and instant login verification",
+          "input": {
+            "username": "admin_test_<TIMESTAMP>",
+            "password": "prodpassword123",
+            "full_name": "Production Administrator"
+          },
+          "expectedOutput": {
+            "tokenIssued": true,
+            "role": "ADMIN",
+            "canLoginImmediately": true
+          },
+          "assertions": 4,
+          "status": "PASSED",
+          "durationMs": 29.49,
+          "realtimeLog": "(pass) Bearer Token Authentication & User Verification > should register a new administrator user and issue Bearer token [29.49ms]"
+        },
+        {
+          "testId": "TC-BE-022",
+          "name": "should reject registration when username already exists",
+          "targetEdgeCase": "Duplicate username conflict prevention",
+          "input": {
+            "username": "admin",
+            "password": "anotherpassword"
+          },
+          "expectedOutput": {
+            "rejects": true,
+            "messagePattern": "Username is already taken"
+          },
+          "assertions": 1,
+          "status": "PASSED",
+          "durationMs": 2.35,
+          "realtimeLog": "(pass) Bearer Token Authentication & User Verification > should reject registration when username already exists [2.35ms]"
+        },
+        {
+          "testId": "TC-BE-023",
+          "name": "should safely reject tokens with malformed signatures without throwing unhandled TypeErrors",
+          "targetEdgeCase": "crypto.timingSafeEqual buffer length mismatch protection",
+          "input": {
+            "tokens": [
+              "header.payload.short",
+              "bad-token"
+            ]
+          },
+          "expectedOutput": {
+            "handledGracefully": true,
+            "expectedErrors": [
+              "Invalid token signature",
+              "Invalid authentication token format"
+            ]
+          },
+          "assertions": 2,
+          "status": "PASSED",
+          "durationMs": 0.32,
+          "realtimeLog": "(pass) Bearer Token Authentication & User Verification > should safely reject tokens with malformed signatures without throwing unhandled TypeErrors [0.32ms]"
+        },
+        {
+          "testId": "TC-BE-024",
+          "name": "should reject expired Bearer tokens with 401 TokenExpiredError",
+          "targetEdgeCase": "Token expired in past (exp: Date.now() - 3600s)",
+          "input": {
+            "expiredTokenTimestamp": "1 hour ago"
+          },
+          "expectedOutput": {
+            "throws": true,
+            "messagePattern": "Session token has expired"
+          },
+          "assertions": 1,
+          "status": "PASSED",
+          "durationMs": 0.47,
+          "realtimeLog": "(pass) Bearer Token Authentication & User Verification > should reject expired Bearer tokens with 401 TokenExpiredError [0.47ms]"
+        }
+      ]
+    },
+    {
+      "suiteId": "SUITE-BE-10",
+      "suiteName": "Employee Management Service (CRUD & Validations)",
+      "description": "Employee onboarding, sequential ID generation, profile update, and exit tracking.",
+      "tests": [
+        {
+          "testId": "TC-BE-025",
+          "name": "should auto-generate sequential EMP-XXXXX ID when creating employee without employee_id",
+          "targetEdgeCase": "Automated sequential ID generation matching regex ^EMP-\\d{5}$",
+          "input": {
+            "first_name": "TestAutomated",
+            "last_name": "Employee",
+            "email": "test.automated@acme.com",
+            "role_id": 1,
+            "country_code": "US",
+            "annual_ctc": 150000,
+            "status": "ACTIVE"
+          },
+          "expectedOutput": {
+            "employeeIdPattern": "^EMP-\\d{5}$",
+            "status": "ACTIVE"
+          },
+          "assertions": 4,
+          "status": "PASSED",
+          "durationMs": 13.70,
+          "realtimeLog": "(pass) Employee Management Service (CRUD & Validations) > should auto-generate sequential EMP-XXXXX ID when creating employee without employee_id [13.70ms]"
+        },
+        {
+          "testId": "TC-BE-026",
+          "name": "should validate and update existing employee profile",
+          "targetEdgeCase": "Updating profile to EXITING status with last_working_day and increased CTC",
+          "input": {
+            "updatedFields": {
+              "first_name": "UpdateTestModified",
+              "annual_ctc": 1200000,
+              "status": "EXITING",
+              "last_working_day": "2026-11-30"
+            }
+          },
+          "expectedOutput": {
+            "first_name": "UpdateTestModified",
+            "annual_ctc": 1200000,
+            "status": "EXITING",
+            "last_working_day": "2026-11-30"
+          },
+          "assertions": 5,
+          "status": "PASSED",
+          "durationMs": 14.63,
+          "realtimeLog": "(pass) Employee Management Service (CRUD & Validations) > should validate and update existing employee profile [14.63ms]"
+        },
+        {
+          "testId": "TC-BE-027",
+          "name": "should reject employee creation with zero or negative annual CTC or invalid email",
+          "targetEdgeCase": "Annual CTC <= 0 and email without '@'",
+          "input": {
+            "zeroCtcPayload": { "annual_ctc": 0 },
+            "invalidEmailPayload": { "email": "invalidemailformat" }
+          },
+          "expectedOutput": {
+            "zeroCtcRejected": "Annual CTC must be greater than zero",
+            "invalidEmailRejected": "A valid email address is required"
+          },
+          "assertions": 2,
+          "status": "PASSED",
+          "durationMs": 0.25,
+          "realtimeLog": "(pass) Employee Management Service (CRUD & Validations) > should reject employee creation with zero or negative annual CTC or invalid email [0.25ms]"
+        },
+        {
+          "testId": "TC-BE-028",
+          "name": "should return 404 AppError when updating a non-existent employee",
+          "targetEdgeCase": "Update targeting non-existent PK (99999999)",
+          "input": {
+            "employeeId": 99999999,
+            "payload": { "first_name": "Ghost" }
+          },
+          "expectedOutput": {
+            "throws": true,
+            "messagePattern": "Employee with ID 99999999 not found"
+          },
+          "assertions": 1,
+          "status": "PASSED",
+          "durationMs": 2.46,
+          "realtimeLog": "(pass) Employee Management Service (CRUD & Validations) > should return 404 AppError when updating a non-existent employee [2.46ms]"
+        },
+        {
+          "testId": "TC-BE-029",
+          "name": "should accurately link an updated EXITING employee to getExitingEmployees for the cycle",
+          "targetEdgeCase": "Lifecycle query linking: employee marked EXITING on Nov 25 appears in Nov 2026 exit query",
+          "input": {
+            "month": 11,
+            "year": 2026,
+            "last_working_day": "2026-11-25"
+          },
+          "expectedOutput": {
+            "foundInCycleExits": true,
+            "status": "EXITING"
+          },
+          "assertions": 2,
+          "status": "PASSED",
+          "durationMs": 28.61,
+          "realtimeLog": "(pass) Employee Management Service (CRUD & Validations) > should accurately link an updated EXITING employee to getExitingEmployees for the cycle [28.61ms]"
+        }
+      ]
+    }
+  ]
+}

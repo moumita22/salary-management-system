@@ -2,12 +2,12 @@
   "name": "sms-backend",
   "version": "1.0.0",
   "description": "Salary Management System Backend API",
-  "main": "src/server.js",
+  "main": "src/server.ts",
   "type": "module",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "seed": "node scripts/seed.js",
+    "start": "bun src/server.ts",
+    "dev": "bun --watch src/server.ts",
+    "seed": "bun scripts/seed.js",
     "test": "bun test"
   },
   "dependencies": {
