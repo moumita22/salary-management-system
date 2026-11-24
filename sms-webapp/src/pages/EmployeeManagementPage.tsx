@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Search,
   Plus,
@@ -11,6 +11,7 @@ import {
   UserX,
   AlertTriangle,
   Loader2,
+  Lock,
 } from 'lucide-react';
 import { Header, Pagination, EmployeeModal } from '../components/index.js';
 import { getDepartments, getEmployees } from '../services/api.js';
@@ -54,12 +55,14 @@ export default function EmployeeManagementPage(): React.JSX.Element {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
-  // Toast Notification State
+  // Toast Notification State (6s duration)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
+    toastTimerRef.current = setTimeout(() => setToast(null), 6000);
   };
 
   // Debounce Search Input
@@ -122,6 +125,10 @@ export default function EmployeeManagementPage(): React.JSX.Element {
   };
 
   const handleOpenEditModal = (emp: Employee) => {
+    if (emp.status === 'TERMINATED') {
+      showToast('Terminated employee profiles are locked from editing.', 'error');
+      return;
+    }
     setSelectedEmployee(emp);
     setIsModalOpen(true);
   };
@@ -150,9 +157,9 @@ export default function EmployeeManagementPage(): React.JSX.Element {
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       {/* Toast Notification */}
       {toast && (
-        <div className="fixed bottom-5 right-5 z-50 animate-in slide-in-from-bottom duration-200">
+        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 duration-300">
           <div
-            className={`px-4 py-3 rounded-xl shadow-lg font-semibold text-xs flex items-center space-x-2 ${
+            className={`px-5 py-3.5 rounded-2xl shadow-2xl font-bold text-sm tracking-wide flex items-center space-x-3 border border-white/10 ${
               toast.type === 'error' ? 'bg-rose-600 text-white' : 'bg-slate-900 text-white'
             }`}
           >
@@ -410,14 +417,24 @@ export default function EmployeeManagementPage(): React.JSX.Element {
 
                           {/* Actions */}
                           <td className="py-3 px-4 whitespace-nowrap text-right">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditModal(emp)}
-                              className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 transition-colors cursor-pointer"
-                            >
-                              <Edit2 className="w-3 h-3" />
-                              <span>Edit</span>
-                            </button>
+                            {status === 'TERMINATED' ? (
+                              <span
+                                className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed select-none"
+                                title="Terminated employee profiles are locked from editing"
+                              >
+                                <Lock className="w-3 h-3 text-slate-400" />
+                                <span>Locked</span>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditModal(emp)}
+                                className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 transition-colors cursor-pointer"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                                <span>Edit</span>
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );

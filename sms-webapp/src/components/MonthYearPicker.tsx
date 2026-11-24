@@ -1,6 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { MONTHS_SHORT, MONTHS_LONG } from '../utils/index.js';
+
+function getMaxSelectablePeriod() {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // 1-12
+  const maxYear = currentMonth === 12 ? currentYear + 1 : currentYear;
+  const maxMonth = currentMonth === 12 ? 1 : currentMonth + 1; // 1-12
+  return { currentYear, currentMonth, maxYear, maxMonth };
+}
 
 export interface MonthYearValue {
   month: number; // 1-12
@@ -24,9 +33,14 @@ export default function MonthYearPicker({
   const [navYear, setNavYear] = useState<number>(value.year);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const { currentYear, currentMonth, maxYear, maxMonth } = useMemo(
+    () => getMaxSelectablePeriod(),
+    []
+  );
+
   const handleToggle = () => {
     if (!isOpen) {
-      setNavYear(value.year);
+      setNavYear(Math.min(value.year, maxYear));
     }
     setIsOpen((prev) => !prev);
   };
@@ -73,7 +87,7 @@ export default function MonthYearPicker({
 
       {/* Calendar Popover */}
       {isOpen && (
-        <div className="absolute right-0 sm:left-0 sm:right-auto mt-2 w-64 p-3 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 mt-2 w-64 p-3 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 animate-in fade-in zoom-in-95 duration-150">
           {/* Year Navigation */}
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
             <button
@@ -87,9 +101,14 @@ export default function MonthYearPicker({
             <span className="font-extrabold text-sm text-slate-900">{navYear}</span>
             <button
               type="button"
-              onClick={() => setNavYear((prev) => prev + 1)}
-              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-slate-900 cursor-pointer transition-colors"
-              title="Next year"
+              disabled={navYear >= maxYear}
+              onClick={() => setNavYear((prev) => Math.min(maxYear, prev + 1))}
+              className={`p-1.5 rounded-lg transition-colors ${
+                navYear >= maxYear
+                  ? 'opacity-30 cursor-not-allowed text-slate-300'
+                  : 'hover:bg-slate-100 text-slate-600 hover:text-slate-900 cursor-pointer'
+              }`}
+              title={navYear >= maxYear ? 'Cannot navigate past next month' : 'Next year'}
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -98,17 +117,24 @@ export default function MonthYearPicker({
           {/* Month Grid (3 cols x 4 rows) */}
           <div className="grid grid-cols-3 gap-1.5">
             {MONTHS_SHORT.map((mName, idx) => {
-              const isSelected = value.month === idx + 1 && value.year === navYear;
+              const monthNum = idx + 1;
+              const isSelected = value.month === monthNum && value.year === navYear;
+              const isDisabled = navYear > maxYear || (navYear === maxYear && monthNum > maxMonth);
+
               return (
                 <button
                   key={mName}
                   type="button"
-                  onClick={() => handleSelectMonth(idx)}
-                  className={`py-2 px-1 text-xs rounded-xl font-bold transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-slate-700 hover:bg-blue-50 hover:text-blue-700'
+                  disabled={isDisabled}
+                  onClick={() => !isDisabled && handleSelectMonth(idx)}
+                  className={`py-2 px-1 text-xs rounded-xl font-bold transition-all ${
+                    isDisabled
+                      ? 'text-slate-300 bg-slate-50/50 cursor-not-allowed select-none'
+                      : isSelected
+                      ? 'bg-blue-600 text-white shadow-xs cursor-pointer'
+                      : 'text-slate-700 hover:bg-blue-50 hover:text-blue-700 cursor-pointer'
                   }`}
+                  title={isDisabled ? 'Future months beyond next month are unavailable' : `${mName} ${navYear}`}
                 >
                   {mName}
                 </button>
@@ -121,33 +147,22 @@ export default function MonthYearPicker({
             <button
               type="button"
               onClick={() => {
-                onChange({ month: 10, year: 2026 });
+                onChange({ month: currentMonth, year: currentYear });
                 setIsOpen(false);
               }}
               className="text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
             >
-              Oct 2026
+              Current ({MONTHS_SHORT[currentMonth - 1]})
             </button>
             <button
               type="button"
               onClick={() => {
-                onChange({ month: 11, year: 2026 });
+                onChange({ month: maxMonth, year: maxYear });
                 setIsOpen(false);
               }}
-              className="text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
+              className="text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer"
             >
-              Nov 2026
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const now = new Date();
-                onChange({ month: now.getMonth() + 1, year: now.getFullYear() });
-                setIsOpen(false);
-              }}
-              className="text-slate-500 hover:text-slate-800 font-medium cursor-pointer"
-            >
-              Current
+              Next Month ({MONTHS_SHORT[maxMonth - 1]})
             </button>
           </div>
         </div>

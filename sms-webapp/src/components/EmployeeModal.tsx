@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, User, Mail, DollarSign, Calendar, AlertCircle, Loader2 } from 'lucide-react';
 import { getRoles, createEmployee, updateEmployee } from '../services/api.js';
 import type { Department, Employee } from '../types/index.js';
@@ -27,6 +27,16 @@ const COUNTRY_OPTIONS = [
   { code: 'SG', label: 'Singapore (SG)', currency: 'SGD (S$)' },
 ];
 
+function getMaxAllowedDate(): string {
+  const now = new Date();
+  // month + 2 with day 0 gives the last calendar day of next month
+  const endOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+  const yyyy = endOfNextMonth.getFullYear();
+  const mm = String(endOfNextMonth.getMonth() + 1).padStart(2, '0');
+  const dd = String(endOfNextMonth.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 export default function EmployeeModal({
   isOpen,
   employee,
@@ -53,6 +63,9 @@ export default function EmployeeModal({
   const [loadingRoles, setLoadingRoles] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Maximum allowed date: till end of next month from current month
+  const maxDate = useMemo(() => getMaxAllowedDate(), []);
 
   // Initialize form when opened or employee prop changes
   useEffect(() => {
@@ -146,8 +159,16 @@ export default function EmployeeModal({
       setErrorMessage('Date of Joining is required.');
       return;
     }
+    if (dateOfJoining > maxDate) {
+      setErrorMessage(`Date of Joining cannot be after next month (${maxDate}).`);
+      return;
+    }
     if ((status === 'EXITING' || status === 'TERMINATED') && !lastWorkingDay) {
       setErrorMessage('Last Working Day is required for Exiting or Terminated status.');
+      return;
+    }
+    if (lastWorkingDay && lastWorkingDay > maxDate) {
+      setErrorMessage(`Last Working Day cannot be after next month (${maxDate}).`);
       return;
     }
 
@@ -372,13 +393,21 @@ export default function EmployeeModal({
                 Date of Joining <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
-                <Calendar className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                <Calendar className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
                 <input
                   type="date"
                   required
+                  max={maxDate}
                   value={dateOfJoining}
                   onChange={(e) => setDateOfJoining(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  onClick={(e) => {
+                    try {
+                      e.currentTarget.showPicker();
+                    } catch {
+                      // fallback
+                    }
+                  }}
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
                 />
               </div>
             </div>
@@ -387,12 +416,20 @@ export default function EmployeeModal({
                 Last Working Day {(status === 'EXITING' || status === 'TERMINATED') && <span className="text-rose-500">*</span>}
               </label>
               <div className="relative">
-                <Calendar className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                <Calendar className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
                 <input
                   type="date"
+                  max={maxDate}
                   value={lastWorkingDay}
                   onChange={(e) => setLastWorkingDay(e.target.value)}
-                  className={`w-full pl-9 pr-3 py-2 text-xs rounded-xl border focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                  onClick={(e) => {
+                    try {
+                      e.currentTarget.showPicker();
+                    } catch {
+                      // fallback
+                    }
+                  }}
+                  className={`w-full pl-9 pr-3 py-2 text-xs rounded-xl border focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${
                     status === 'EXITING' || status === 'TERMINATED'
                       ? 'border-amber-300 bg-amber-50/30'
                       : 'border-slate-300'
