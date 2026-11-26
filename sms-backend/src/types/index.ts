@@ -161,6 +161,7 @@ export interface DirectoryEmployee extends EmployeeDetail {
   net_salary?: number | null;
   salary_status?: SalaryStatus | null;
   calculation_snapshot?: CalculationSnapshot | null;
+  paid_at?: number | null;
 }
 
 export interface CalculationSnapshot {

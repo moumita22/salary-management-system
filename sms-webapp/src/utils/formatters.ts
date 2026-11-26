@@ -61,6 +61,17 @@ export function formatUsd(val?: number | string | null): string {
 }
 
 /**
+ * Returns today's calendar date as a 'YYYY-MM-DD' string
+ */
+export function getTodayIsoDate(): string {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
  * Returns the exact number of calendar days in a given month and year
  * (Handles leap years accurately: e.g. Feb 2024 -> 29, Feb 2026 -> 28)
  */
@@ -96,6 +107,23 @@ export function formatTimestamp(val?: number | string | Date | null): string {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+  });
+}
+
+/**
+ * Formats a Unix epoch timestamp (milliseconds), ISO date string, or Date into a localized Date & Time string (e.g. 'Nov 26, 2026, 3:00 PM')
+ */
+export function formatDateTime(val?: number | string | Date | null): string {
+  if (!val) return '—';
+  const d = typeof val === 'number' ? new Date(val) : new Date(val);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
   });
 }
 
