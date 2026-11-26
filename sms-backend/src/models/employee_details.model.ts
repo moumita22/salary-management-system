@@ -272,7 +272,8 @@ export class EmployeeDetailModel extends BaseModel<EmployeeDetail> {
         s.tax_deduction,
         s.net_salary,
         s.status AS salary_status,
-        s.calculation_snapshot
+        s.calculation_snapshot,
+        s.paid_at
       FROM employee_details e
       JOIN roles r ON e.role_id = r.id
       JOIN departments d ON r.department_id = d.id
@@ -353,7 +354,8 @@ export class EmployeeDetailModel extends BaseModel<EmployeeDetail> {
         s.tax_deduction,
         s.net_salary,
         s.status AS salary_status,
-        s.calculation_snapshot
+        s.calculation_snapshot,
+        s.paid_at
       FROM employee_details e
       JOIN roles r ON e.role_id = r.id
       JOIN departments d ON r.department_id = d.id
