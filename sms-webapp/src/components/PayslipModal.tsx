@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, Printer, CheckCircle2, Sparkles, Clock } from 'lucide-react';
 import type { Employee } from '../types/index.js';
-import { formatUsd, parseDate, formatPayPeriod, getDaysInMonth } from '../utils/index.js';
+import { formatUsd, parseDate, formatPayPeriod, getDaysInMonth, formatDateTime } from '../utils/index.js';
 
 export interface PayslipModalProps {
   employee: Employee | null;
@@ -117,9 +117,16 @@ export default function PayslipModal({ employee, payoutPeriod, onClose }: Paysli
             </div>
             <div>
               {isPaid ? (
-                <span className="inline-flex items-center font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200 text-[10px]">
-                  <CheckCircle2 className="w-3 h-3 mr-1" /> PAID & FINALIZED
-                </span>
+                <div className="flex flex-col items-end">
+                  <span className="inline-flex items-center font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200 text-[10px]">
+                    <CheckCircle2 className="w-3 h-3 mr-1" /> PAID & FINALIZED
+                  </span>
+                  {employee.paid_at && (
+                    <span className="text-[10px] text-slate-400 font-mono mt-0.5" title={`Disbursed: ${formatDateTime(employee.paid_at)}`}>
+                      Disbursed: {formatDateTime(employee.paid_at)}
+                    </span>
+                  )}
+                </div>
               ) : (
                 <span className="inline-flex items-center font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200 text-[10px]">
                   DRAFT / ESTIMATE

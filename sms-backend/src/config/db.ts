@@ -17,6 +17,9 @@ dotenv.config();
 // Parse PostgreSQL BIGINT (INT8, OID 20) as JavaScript number
 pg.types.setTypeParser(20, (val: string) => parseInt(val, 10));
 
+// Parse PostgreSQL DATE (OID 1082) as raw 'YYYY-MM-DD' string to avoid timezone offset shifts
+pg.types.setTypeParser(1082, (val: string) => val);
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 

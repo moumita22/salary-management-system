@@ -106,6 +106,9 @@ export class EmployeeService {
     }
 
     const updatedPayload: Partial<EmployeeDetail> = { ...data };
+    // Immutability rule: date_of_joining cannot be modified once an employee is created
+    delete updatedPayload.date_of_joining;
+
     if (data.last_working_day && (!data.status || data.status === 'ACTIVE')) {
       updatedPayload.status = 'EXITING';
     }

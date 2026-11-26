@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, User, Mail, DollarSign, Calendar, AlertCircle, Loader2 } from 'lucide-react';
 import { getRoles, createEmployee, updateEmployee } from '../services/api.js';
 import type { Department, Employee } from '../types/index.js';
+import { getTodayIsoDate } from '../utils/formatters.js';
 
 export interface EmployeeModalProps {
   isOpen: boolean;
@@ -64,8 +65,17 @@ export default function EmployeeModal({
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Maximum allowed date: till end of next month from current month
-  const maxDate = useMemo(() => getMaxAllowedDate(), []);
+  // Date constraints: LWD must be from today up to end of next month
+  // If an existing employee already has a past LWD, permit that date so viewing/editing profile succeeds
+  const [todayDate] = useState<string>(() => getTodayIsoDate());
+  const [maxDate] = useState<string>(() => getMaxAllowedDate());
+  const minLwdDate = useMemo(() => {
+    if (isEdit && employee?.last_working_day) {
+      const existingLwd = employee.last_working_day.split('T')[0];
+      if (existingLwd < todayDate) return existingLwd;
+    }
+    return todayDate;
+  }, [isEdit, employee, todayDate]);
 
   // Initialize form when opened or employee prop changes
   useEffect(() => {
@@ -167,9 +177,15 @@ export default function EmployeeModal({
       setErrorMessage('Last Working Day is required for Exiting or Terminated status.');
       return;
     }
-    if (lastWorkingDay && lastWorkingDay > maxDate) {
-      setErrorMessage(`Last Working Day cannot be after next month (${maxDate}).`);
-      return;
+    if (lastWorkingDay) {
+      if (lastWorkingDay < minLwdDate) {
+        setErrorMessage(`Last Working Day cannot be before minimum allowed date (${minLwdDate}).`);
+        return;
+      }
+      if (lastWorkingDay > maxDate) {
+        setErrorMessage(`Last Working Day cannot be after next month (${maxDate}).`);
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -404,17 +420,24 @@ export default function EmployeeModal({
                 <input
                   type="date"
                   required
+                  disabled={isEdit}
                   max={maxDate}
                   value={dateOfJoining}
                   onChange={(e) => setDateOfJoining(e.target.value)}
                   onClick={(e) => {
+                    if (isEdit) return;
                     try {
                       e.currentTarget.showPicker();
                     } catch {
                       // fallback
                     }
                   }}
-                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
+                  className={`w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
+                    isEdit
+                      ? 'bg-slate-100 text-slate-500 cursor-not-allowed opacity-80'
+                      : 'cursor-pointer'
+                  }`}
+                  title={isEdit ? 'Date of joining cannot be modified after employee creation.' : undefined}
                 />
               </div>
             </div>
@@ -426,6 +449,7 @@ export default function EmployeeModal({
                 <Calendar className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
                 <input
                   type="date"
+                  min={minLwdDate}
                   max={maxDate}
                   value={lastWorkingDay}
                   onChange={(e) => setLastWorkingDay(e.target.value)}

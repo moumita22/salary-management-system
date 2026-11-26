@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { UserMinus, Calculator, FileText, Lock, AlertCircle, Clock, CreditCard, Filter } from 'lucide-react';
 import type { Employee } from '../types/index.js';
-import { formatUsd, parseDate, getLevelBadgeClass, getDaysInMonth } from '../utils/index.js';
+import { formatUsd, parseDate, getLevelBadgeClass, getDaysInMonth, formatDateTime, getTodayIsoDate } from '../utils/index.js';
 
 export interface SettlementViewProps {
   exits: Employee[];
@@ -27,6 +27,8 @@ export default function SettlementView({
 
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const totalDaysInMonth = payoutPeriod ? getDaysInMonth(payoutPeriod.month, payoutPeriod.year) : 30;
+
+  const [todayStr] = useState<string>(() => getTodayIsoDate());
 
   const pendingCount = exits.filter((e) => e.status === 'EXITING').length;
   const terminatedCount = exits.filter((e) => e.status === 'TERMINATED').length;
@@ -133,6 +135,8 @@ export default function SettlementView({
               const dateInfo = parseDate(emp.last_working_day);
               const daysInMonth = emp.calculation_snapshot?.total_working_days ?? totalDaysInMonth;
               const actualDaysWorked = emp.calculation_snapshot?.actual_days_worked ?? dateInfo.day;
+              const cleanLwd = emp.last_working_day ? String(emp.last_working_day).split('T')[0] : '';
+              const isLwdPassed = Boolean(cleanLwd && cleanLwd < todayStr);
 
               return (
                 <tr key={emp.employee_id} className="hover:bg-slate-50/80 transition-colors">
@@ -209,17 +213,38 @@ export default function SettlementView({
                   {/* Status Badge (Matching EmployeeTable Design) */}
                   <td className="py-3.5 px-3 text-center whitespace-nowrap">
                     {isPaid ? (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                        <Lock className="w-3 h-3 mr-1" /> Paid
-                      </span>
+                      <div className="flex flex-col items-center">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          <Lock className="w-3 h-3 mr-1" /> Paid
+                        </span>
+                        {emp.paid_at && (
+                          <span className="text-[10px] text-slate-500 font-mono mt-0.5" title={`Disbursed: ${formatDateTime(emp.paid_at)}`}>
+                            {formatDateTime(emp.paid_at)}
+                          </span>
+                        )}
+                      </div>
                     ) : hasSalary ? (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                        Draft
-                      </span>
+                      <div className="flex flex-col items-center space-y-1">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                          Draft
+                        </span>
+                        {isLwdPassed && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+                            Pending Settlement
+                          </span>
+                        )}
+                      </div>
                     ) : (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200">
-                        Uncalculated
-                      </span>
+                      <div className="flex flex-col items-center space-y-1">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                          Uncalculated
+                        </span>
+                        {isLwdPassed && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+                            Pending Settlement
+                          </span>
+                        )}
+                      </div>
                     )}
                   </td>
 
