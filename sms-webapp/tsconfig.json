@@ -13,7 +13,7 @@
     "strict": false,
     "allowJs": true,
     "esModuleInterop": true,
-    "types": ["vitest/globals", "@testing-library/jest-dom/vitest"]
+    "types": ["vitest/globals", "@testing-library/jest-dom", "vite/client"]
   },
   "include": ["src"]
 }

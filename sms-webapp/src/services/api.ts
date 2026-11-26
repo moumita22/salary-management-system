@@ -4,7 +4,7 @@ import type {
   PaginatedResponse,
 } from '../types/index.js';
 
-const API_BASE = '/api';
+const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
 /**
  * Standardized API Error retaining HTTP status code, error code, and code-issue flags
